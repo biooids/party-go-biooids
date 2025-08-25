@@ -1,0 +1,200 @@
+// src/features/admin/admin.service.ts
+
+import { User } from "../../db/mongo.js";
+import Event from "../event/event.model.js";
+import { EventStatus } from "../event/event.types.js";
+import { createHttpError } from "../../utils/error.factory.js";
+import { BanUserDto, UpdateUserRoleDto } from "./admin.types.js";
+import { authService } from "../auth/auth.service.js";
+import { logger } from "../../config/logger.js";
+import { SystemRole } from "../../types/user.types.js"; // ✅ 1. Import SystemRole
+
+export class AdminService {
+  // === Super Admin Methods ===
+
+  /**
+   * (Super Admin) Retrieves a paginated list of all users.
+   */
+  async listAllUsers(page = 1, limit = 20) {
+    const users = await User.find()
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+    return users;
+  }
+
+  /**
+   * (Super Admin) Changes a user's system role.
+   */
+  async changeUserRole(
+    targetUserId: string,
+    { systemRole }: UpdateUserRoleDto,
+    actor: { id: string; systemRole: SystemRole } // ✅ 2. Accept the 'actor'
+  ) {
+    const targetUser = await User.findById(targetUserId);
+    if (!targetUser) {
+      throw createHttpError(404, "User not found.");
+    }
+
+    // ✅ 3. Add security check
+    if (targetUser._id.toString() === actor.id) {
+      throw createHttpError(400, "You cannot change your own role.");
+    }
+    if (targetUser.systemRole === SystemRole.SUPER_ADMIN) {
+      throw createHttpError(403, "Cannot change the role of a Super Admin.");
+    }
+
+    targetUser.systemRole = systemRole;
+    await targetUser.save();
+    logger.info(
+      { userId: targetUserId, newRole: systemRole },
+      "User role updated."
+    );
+    return targetUser.toObject();
+  }
+
+  /**
+   * (Super Admin) Deletes a user from the database.
+   */
+  async deleteUser(
+    targetUserId: string,
+    actor: { id: string; systemRole: SystemRole } // ✅ 2. Accept the 'actor'
+  ) {
+    const targetUser = await User.findById(targetUserId).lean();
+    if (!targetUser) {
+      throw createHttpError(404, "User not found.");
+    }
+
+    // ✅ 3. Add security check
+    if (targetUser._id.toString() === actor.id) {
+      throw createHttpError(400, "You cannot delete your own account.");
+    }
+    if (targetUser.systemRole === SystemRole.SUPER_ADMIN) {
+      throw createHttpError(403, "A Super Admin account cannot be deleted.");
+    }
+
+    await User.findByIdAndDelete(targetUserId);
+    logger.warn({ userId: targetUserId }, "User permanently deleted.");
+    return { message: "User deleted successfully." };
+  }
+
+  // === Admin & Super Admin Methods ===
+
+  /**
+   * (Admin) Bans a user, logs them out of all devices, and records the reason.
+   */
+  async banUser(
+    targetUserId: string,
+    { banReason, bannedUntil }: BanUserDto,
+    actor: { id: string; systemRole: SystemRole }
+  ) {
+    const targetUser = await User.findById(targetUserId);
+    if (!targetUser) {
+      throw createHttpError(404, "User not found.");
+    }
+
+    if (targetUser._id.toString() === actor.id) {
+      throw createHttpError(400, "You cannot ban yourself.");
+    }
+    if (targetUser.systemRole === SystemRole.SUPER_ADMIN) {
+      throw createHttpError(403, "A Super Admin cannot be banned.");
+    }
+
+    targetUser.isBanned = true;
+    targetUser.banReason = banReason;
+    targetUser.bannedUntil = bannedUntil || null;
+    await targetUser.save();
+
+    await authService.revokeAllRefreshTokensForUser(targetUserId);
+    logger.warn(
+      { userId: targetUserId, reason: banReason },
+      "User has been banned."
+    );
+    return targetUser.toObject();
+  }
+
+  /**
+   * (Admin) Un-bans a user.
+   */
+  // Corrected unbanUser function
+  async unbanUser(
+    targetUserId: string,
+    actor: { id: string; systemRole: SystemRole }
+  ) {
+    const targetUser = await User.findById(targetUserId);
+    if (!targetUser) {
+      throw createHttpError(404, "User not found.");
+    }
+
+    if (targetUser._id.toString() === actor.id) {
+      throw createHttpError(400, "You cannot unban yourself.");
+    }
+
+    if (targetUser.systemRole === SystemRole.SUPER_ADMIN) {
+      throw createHttpError(403, "A Super Admin's status cannot be modified.");
+    }
+
+    targetUser.isBanned = false;
+    targetUser.banReason = null;
+    targetUser.bannedUntil = null;
+    await targetUser.save();
+    logger.info({ userId: targetUserId }, "User has been un-banned.");
+    return targetUser.toObject();
+  }
+  /**
+   * (Admin) Retrieves a paginated list of all events pending approval.
+   */
+  async listPendingEvents(page = 1, limit = 10) {
+    const events = await Event.find({ status: EventStatus.PENDING })
+      .populate("creatorId", "name username")
+      .populate("categoryId", "name")
+      .sort({ createdAt: 1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+    return events;
+  }
+
+  /**
+   * (Admin) Approves a pending event.
+   */
+  async approveEvent(eventId: string) {
+    const event = await Event.findById(eventId);
+    if (!event) {
+      throw createHttpError(404, "Event not found.");
+    }
+    if (event.status !== EventStatus.PENDING) {
+      throw createHttpError(
+        400,
+        `Event is already in '${event.status}' status.`
+      );
+    }
+    event.status = EventStatus.APPROVED;
+    await event.save();
+    logger.info({ eventId }, "Event approved.");
+    return event.toObject();
+  }
+
+  /**
+   * (Admin) Rejects a pending event.
+   */
+  async rejectEvent(eventId: string) {
+    const event = await Event.findById(eventId);
+    if (!event) {
+      throw createHttpError(404, "Event not found.");
+    }
+    if (event.status !== EventStatus.PENDING) {
+      throw createHttpError(
+        400,
+        `Event is already in '${event.status}' status.`
+      );
+    }
+    event.status = EventStatus.REJECTED;
+    await event.save();
+    logger.warn({ eventId }, "Event rejected.");
+    return event.toObject();
+  }
+}
+
+export const adminService = new AdminService();
