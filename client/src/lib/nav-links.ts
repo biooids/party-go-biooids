@@ -6,19 +6,19 @@ import {
   User as UserIcon,
   Compass,
   ShieldCheck,
+  PlusSquare, // ✅ 1. Import a new icon for the "Create Event" button
   type LucideIcon,
 } from "lucide-react";
-import { SystemRole } from "@/lib/features/auth/authTypes"; // Imports from the file you just updated
+import { SystemRole } from "@/lib/features/auth/authTypes";
 
-// Define a type for navigation links to ensure consistency
 export type NavLink = {
   href: string;
   label: string;
   icon: LucideIcon;
-  roles?: SystemRole[]; // Optional roles array for permission checks
+  roles?: SystemRole[];
 };
 
-// The main array of navigation links
+// The main array of navigation links for the sidebar
 export const mainNavLinks: NavLink[] = [
   {
     href: "/",
@@ -26,7 +26,7 @@ export const mainNavLinks: NavLink[] = [
     icon: Home,
   },
   {
-    href: "/explore",
+    href: "/events",
     label: "Explore",
     icon: Compass,
   },
@@ -42,6 +42,12 @@ export const mainNavLinks: NavLink[] = [
     roles: [SystemRole.ADMIN, SystemRole.SUPER_ADMIN],
   },
 ];
+
+export const createEventLink: NavLink = {
+  href: "/events/create",
+  label: "Create Event",
+  icon: PlusSquare,
+};
 
 export const settingsLink: NavLink = {
   href: "/settings",

@@ -7,7 +7,10 @@ import { createHttpError } from "../../utils/error.factory.js";
 import { BanUserDto, UpdateUserRoleDto } from "./admin.types.js";
 import { authService } from "../auth/auth.service.js";
 import { logger } from "../../config/logger.js";
-import { SystemRole } from "../../types/user.types.js"; // ✅ 1. Import SystemRole
+import { SystemRole } from "../../types/user.types.js";
+import VerificationRequest, {
+  VerificationStatus,
+} from "../verificationRequest/verificationRequest.model.js";
 
 export class AdminService {
   // === Super Admin Methods ===
@@ -194,6 +197,64 @@ export class AdminService {
     await event.save();
     logger.warn({ eventId }, "Event rejected.");
     return event.toObject();
+  }
+
+  /**
+   * (Admin) Retrieves a paginated list of all pending verification requests.
+   */
+  async listPendingVerificationRequests(page = 1, limit = 10) {
+    const requests = await VerificationRequest.find({
+      status: VerificationStatus.PENDING,
+    })
+      .populate("userId", "name username email")
+      .sort({ createdAt: 1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+    return requests;
+  }
+
+  /**
+   * (Admin) Approves a user's verification request.
+   */
+  async approveVerificationRequest(requestId: string) {
+    const request = await VerificationRequest.findById(requestId);
+    if (!request || request.status !== VerificationStatus.PENDING) {
+      throw createHttpError(404, "Pending request not found.");
+    }
+
+    // Update the user's isVerifiedCreator status to true
+    await User.findByIdAndUpdate(request.userId, { isVerifiedCreator: true });
+
+    // Update the request's status to Approved
+    request.status = VerificationStatus.APPROVED;
+    await request.save();
+
+    logger.info(
+      { requestId, userId: request.userId },
+      "Verification request approved."
+    );
+    return request.toObject();
+  }
+
+  /**
+   * (Admin) Rejects a user's verification request.
+   */
+  async rejectVerificationRequest(requestId: string) {
+    const request = await VerificationRequest.findById(requestId);
+    if (!request || request.status !== VerificationStatus.PENDING) {
+      throw createHttpError(404, "Pending request not found.");
+    }
+
+    // Update the request's status to Rejected
+    request.status = VerificationStatus.REJECTED;
+    await request.save();
+
+    logger.warn(
+      { requestId, userId: request.userId },
+      "Verification request rejected."
+    );
+    return request.toObject();
   }
 }
 

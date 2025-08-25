@@ -71,4 +71,26 @@ router.delete(
   adminController.deleteUser
 );
 
+// --- Verification Management Routes (Admin & Super Admin) ---
+router.get(
+  "/verification-requests",
+  requireAuth,
+  requireAdmin,
+  adminController.listPendingVerificationRequests
+);
+
+router.patch(
+  "/verification-requests/:requestId/approve",
+  requireAuth,
+  requireAdmin,
+  adminController.approveVerificationRequest
+);
+
+router.patch(
+  "/verification-requests/:requestId/reject",
+  requireAuth,
+  requireAdmin,
+  adminController.rejectVerificationRequest
+);
+
 export default router;

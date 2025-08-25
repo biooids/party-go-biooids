@@ -11,13 +11,14 @@ import { baseQueryWithReauth } from "./baseQueryWithReauth";
 export const apiSlice = createApi({
   reducerPath: "api",
   baseQuery: baseQueryWithReauth,
-  // ✅ FIXED: Added the new tags for event and category data.
   tagTypes: [
     "User",
     "AdminUsers",
     "PendingEvents",
     "Events",
     "EventCategories",
+    "PendingVerificationRequests",
+    "VerificationRequest",
   ],
   endpoints: (builder) => ({}),
 });

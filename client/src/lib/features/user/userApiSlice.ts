@@ -12,28 +12,22 @@ import { RootState } from "@/lib/store";
 
 export const userApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
-    // GET /api/v1/users/me
     getMe: builder.query<UserProfileApiResponse, void>({
       query: () => "/users/me",
       providesTags: ["User"],
     }),
-
     getUserByUsername: builder.query<PublicProfileApiResponse, string>({
       query: (username) => `/users/profile/${username}`,
       providesTags: (result, error, username) => [
         { type: "User", id: username },
       ],
     }),
-
-    // ✅ NEW: GET /api/v1/users/profiles?usernames=...
     getUsersByUsernames: builder.query<
       { data: { users: SanitizedUserDto[] } },
       string[]
     >({
       query: (usernames) => `/users/profiles?usernames=${usernames.join(",")}`,
     }),
-
-    // ✅ CHANGED: Now accepts FormData to handle file uploads
     updateProfile: builder.mutation<UserProfileApiResponse, FormData>({
       query: (formData) => ({
         url: "/users/me",
@@ -43,12 +37,8 @@ export const userApiSlice = apiSlice.injectEndpoints({
       async onQueryStarted(_, { dispatch, queryFulfilled, getState }) {
         try {
           const { data } = await queryFulfilled;
-
-          // ✅ FIXED: Get the current token from the Redux store.
           const currentToken = (getState() as RootState).auth.token;
-
           if (currentToken) {
-            // Dispatch the action with the new user and the existing token.
             dispatch(
               setCredentials({
                 user: data.data.user,
@@ -62,8 +52,6 @@ export const userApiSlice = apiSlice.injectEndpoints({
       },
       invalidatesTags: ["User"],
     }),
-
-    // ✅ NEW: PATCH /api/v1/users/me/password
     changePassword: builder.mutation<
       { message: string },
       ChangePasswordInputDto
@@ -74,14 +62,11 @@ export const userApiSlice = apiSlice.injectEndpoints({
         body: credentials,
       }),
     }),
-
-    // DELETE /api/v1/users/me
     deleteAccount: builder.mutation<{ message: string }, void>({
       query: () => ({
         url: "/users/me",
         method: "DELETE",
       }),
-      // After deleting the account, log the user out completely.
       async onQueryStarted(_, { dispatch, queryFulfilled }) {
         try {
           await queryFulfilled;
@@ -95,12 +80,10 @@ export const userApiSlice = apiSlice.injectEndpoints({
         url: `/users/${username}/follow`,
         method: "POST",
       }),
-
       invalidatesTags: (result, error, username) => [
         { type: "User", id: username },
       ],
     }),
-
     unfollowUser: builder.mutation<void, string>({
       query: (username) => ({
         url: `/users/${username}/follow`,

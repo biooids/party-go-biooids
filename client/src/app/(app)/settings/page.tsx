@@ -1,39 +1,29 @@
-// src/app/(app)/settings/page.tsx
-
 "use client";
 
-import ChangePasswordForm from "@/components/pages/settings/ChangePasswordForm";
-import DangerZone from "@/components/pages/settings/DangerZone";
-import { useAuth } from "@/lib/hooks/useAuth";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import VerificationSection from "@/components/pages/settings/VerificationSection";
+import { useGetMeQuery } from "@/lib/features/user/userApiSlice";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
-export default function SettingsPage() {
-  const { token } = useAuth();
-  const router = useRouter();
+export default function AccountSettingsPage() {
+  const { data: userData, isLoading, isError } = useGetMeQuery();
 
-  // Protect this route by redirecting if the user is not logged in
-  useEffect(() => {
-    if (!token) {
-      router.push("/login");
-    }
-  }, [token, router]);
-
-  // Render nothing while redirecting to prevent a flash of content
-  if (!token) {
-    return null;
-  }
+  // The route protection is now handled by the layout.tsx
 
   return (
-    <div className="container mx-auto max-w-2xl py-8 space-y-12">
-      <div>
-        <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-muted-foreground">
-          Manage your account settings and security.
-        </p>
-      </div>
-      <ChangePasswordForm />
-      <DangerZone />
+    <div className="space-y-8">
+      {isLoading && <Skeleton className="h-24 w-full" />}
+
+      {isError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>Could not load user data.</AlertDescription>
+        </Alert>
+      )}
+
+      {userData && <VerificationSection user={userData.data.user} />}
     </div>
   );
 }

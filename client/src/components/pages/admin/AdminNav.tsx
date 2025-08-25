@@ -5,7 +5,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, CalendarCheck, Users, Shapes } from "lucide-react";
+import {
+  LayoutDashboard,
+  CalendarCheck,
+  Users,
+  Shapes,
+  UserCheck,
+} from "lucide-react";
 
 const adminNavLinks = [
   {
@@ -17,6 +23,11 @@ const adminNavLinks = [
     href: "/admin/events",
     label: "Event Approvals",
     icon: CalendarCheck,
+  },
+  {
+    href: "/admin/verification",
+    label: "Verification Requests",
+    icon: UserCheck,
   },
   {
     href: "/admin/users",

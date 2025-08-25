@@ -85,6 +85,46 @@ class AdminController {
     const rejectedEvent = await adminService.rejectEvent(eventId);
     res.status(200).json({ status: "success", data: { event: rejectedEvent } });
   });
+
+  // === Verification Request Controllers ===
+
+  listPendingVerificationRequests = asyncHandler(
+    async (req: Request, res: Response) => {
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
+      const limit = req.query.limit
+        ? parseInt(req.query.limit as string, 10)
+        : 10;
+      const requests = await adminService.listPendingVerificationRequests(
+        page,
+        limit
+      );
+      res.status(200).json({ status: "success", data: { requests } });
+    }
+  );
+
+  approveVerificationRequest = asyncHandler(
+    async (req: Request, res: Response) => {
+      const { requestId } = req.params;
+      const request = await adminService.approveVerificationRequest(requestId);
+      res.status(200).json({
+        status: "success",
+        message: "Verification request approved.",
+        data: { request },
+      });
+    }
+  );
+
+  rejectVerificationRequest = asyncHandler(
+    async (req: Request, res: Response) => {
+      const { requestId } = req.params;
+      const request = await adminService.rejectVerificationRequest(requestId);
+      res.status(200).json({
+        status: "success",
+        message: "Verification request rejected.",
+        data: { request },
+      });
+    }
+  );
 }
 
 export const adminController = new AdminController();

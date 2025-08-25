@@ -1,3 +1,5 @@
+//src/components/pages/settings/DangerZone.tsx
+
 "use client";
 
 import { useState } from "react";

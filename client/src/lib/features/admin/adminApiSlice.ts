@@ -8,9 +8,17 @@ import type {
   GetPendingEventsApiResponse,
   UpdateUserRoleDto,
 } from "./adminTypes";
+import { VerificationRequest } from "../verificationRequest/verificationRequestTypes";
+
+// Define the response type for the new endpoint
+interface GetPendingVerificationRequestsApiResponse {
+  status: string;
+  data: {
+    requests: VerificationRequest[];
+  };
+}
 
 export const adminApiSlice = apiSlice.injectEndpoints({
-  // ✅ Add new tags for managing admin-specific cache.
   overrideExisting: false,
   endpoints: (builder) => ({
     // === User Management Endpoints ===
@@ -18,7 +26,6 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       query: () => "/admin/users",
       providesTags: ["AdminUsers"],
     }),
-
     updateUserRole: builder.mutation<
       AdminUserView,
       { userId: string; body: UpdateUserRoleDto }
@@ -28,10 +35,8 @@ export const adminApiSlice = apiSlice.injectEndpoints({
         method: "PATCH",
         body,
       }),
-      // ✅ When a user's role is updated, invalidate the user list to refetch.
       invalidatesTags: ["AdminUsers"],
     }),
-
     banUser: builder.mutation<
       AdminUserView,
       { userId: string; body: BanUserDto }
@@ -43,7 +48,6 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ["AdminUsers"],
     }),
-
     unbanUser: builder.mutation<AdminUserView, string>({
       query: (userId) => ({
         url: `/admin/users/${userId}/unban`,
@@ -51,7 +55,6 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ["AdminUsers"],
     }),
-
     deleteUser: builder.mutation<{ message: string }, string>({
       query: (userId) => ({
         url: `/admin/users/${userId}`,
@@ -65,22 +68,45 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       query: () => "/admin/events/pending",
       providesTags: ["PendingEvents"],
     }),
-
     approveEvent: builder.mutation<Event, string>({
       query: (eventId) => ({
         url: `/admin/events/${eventId}/approve`,
         method: "PATCH",
       }),
-      // ✅ When an event is approved, invalidate the pending list to refetch.
       invalidatesTags: ["PendingEvents"],
     }),
-
     rejectEvent: builder.mutation<Event, string>({
       query: (eventId) => ({
         url: `/admin/events/${eventId}/reject`,
         method: "PATCH",
       }),
       invalidatesTags: ["PendingEvents"],
+    }),
+
+    // ✅ ADDED: New endpoints for verification management
+    // === Verification Management Endpoints ===
+    getPendingVerificationRequests: builder.query<
+      GetPendingVerificationRequestsApiResponse,
+      void
+    >({
+      query: () => "/admin/verification-requests",
+      providesTags: ["PendingVerificationRequests"],
+    }),
+
+    approveVerificationRequest: builder.mutation<VerificationRequest, string>({
+      query: (requestId) => ({
+        url: `/admin/verification-requests/${requestId}/approve`,
+        method: "PATCH",
+      }),
+      invalidatesTags: ["PendingVerificationRequests", "AdminUsers"],
+    }),
+
+    rejectVerificationRequest: builder.mutation<VerificationRequest, string>({
+      query: (requestId) => ({
+        url: `/admin/verification-requests/${requestId}/reject`,
+        method: "PATCH",
+      }),
+      invalidatesTags: ["PendingVerificationRequests"],
     }),
   }),
 });
@@ -94,4 +120,7 @@ export const {
   useGetPendingEventsQuery,
   useApproveEventMutation,
   useRejectEventMutation,
+  useGetPendingVerificationRequestsQuery,
+  useApproveVerificationRequestMutation,
+  useRejectVerificationRequestMutation,
 } = adminApiSlice;
