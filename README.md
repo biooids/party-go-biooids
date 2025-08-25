@@ -13,18 +13,14 @@ git clone https://github.com/biooids/events-app-biooids.git
 
 # Backend
 cd server
+pnpm install
 
 # Frontend
 cd client
-```
-
-### 2. Install Dependencies
-
-```bash
 pnpm install
 ```
 
-### 3. Environment Variables
+### 2. Environment Variables
 
 #### Backend (`.env`)
 
@@ -51,7 +47,7 @@ CLOUDINARY_API_SECRET=your-cloudinary-api-secret
 NEXT_PUBLIC_BACKEND_API_URL=http://localhost:3001/api/v1
 ```
 
-### 4. Run Servers
+### 3. Run Servers
 
 ```bash
 # Backend
