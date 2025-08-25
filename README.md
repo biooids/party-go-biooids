@@ -59,7 +59,7 @@ cd client
 pnpm run dev
 ```
 
-- Backend: [http://localhost:5000](http://localhost:3001)
+- Backend: [http://localhost:3001](http://localhost:3001)
 - Frontend: [http://localhost:3000](http://localhost:3000)
 
 ---
