@@ -17,25 +17,29 @@ export const checkVerification = asyncHandler(
       throw createHttpError(401, "Authentication required.");
     }
 
-    // This still requires a database query to get the full user object.
     const fullUser = await User.findById(req.user.id).lean();
 
     if (!fullUser) {
       throw createHttpError(404, "User not found.");
     }
 
-    // ✅ 2. Update the permission logic.
-    // Check if the user is verified OR if their role is Admin or Super Admin.
     const canCreateEvents =
       fullUser.isVerifiedCreator ||
       fullUser.systemRole === SystemRole.ADMIN ||
       fullUser.systemRole === SystemRole.SUPER_ADMIN;
 
+    // ✅ ADD THESE LOGS FOR DEBUGGING
+    console.log("--- PERMISSION CHECK ---");
+    console.log("User ID:", fullUser._id.toString());
+    console.log("User Role from DB:", fullUser.systemRole);
+    console.log("Is Verified Creator:", fullUser.isVerifiedCreator);
+    console.log("CAN CREATE EVENTS?:", canCreateEvents);
+    console.log("--------------------------");
+
     if (canCreateEvents) {
-      return next(); // User has permission, proceed.
+      return next();
     }
 
-    // If none of the conditions are met, send a 403 Forbidden error.
     throw createHttpError(
       403,
       "You do not have permission to create new events."

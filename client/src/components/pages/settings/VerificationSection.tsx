@@ -1,5 +1,4 @@
-// src/components/pages/settings/VerificationSection.tsx
-
+//src/components/pages/settings/VerificationSection.tsx
 "use client";
 
 import { useState } from "react";
@@ -17,20 +16,27 @@ import {
 import { CheckCircle2, Hourglass, HelpCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { VerificationStatus } from "@/lib/features/verificationRequest/verificationRequestTypes";
+import { SystemRole } from "@/lib/features/auth/authTypes"; // ✅ 1. Import SystemRole
 
 export default function VerificationSection({ user }: { user: UserProfile }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // ✅ Use the new hook to fetch the user's request status
   const { data: requestData, isLoading } = useGetMyVerificationRequestQuery();
   const requestStatus = requestData?.data.request?.status;
+
+  // ✅ 2. Create a comprehensive check for verification status.
+  // A user is effectively verified if they have the flag OR are an admin.
+  const isEffectivelyVerified =
+    user.isVerifiedCreator ||
+    user.systemRole === SystemRole.ADMIN ||
+    user.systemRole === SystemRole.SUPER_ADMIN;
 
   if (isLoading) {
     return <Skeleton className="h-28 w-full" />;
   }
 
-  // Case 1: The user is already a verified creator.
-  if (user.isVerifiedCreator) {
+  // Case 1: The user is effectively a verified creator.
+  if (isEffectivelyVerified) {
     return (
       <Card>
         <CardHeader>

@@ -8,6 +8,7 @@ import { useForm, Controller, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { format } from "date-fns";
 import {
   createEventSchema,
   CreateEventFormValues,
@@ -27,9 +28,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, X, ImagePlus } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Loader2, X, ImagePlus, Calendar as CalendarIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const MAX_IMAGES = 5;
+const MAX_DESC_LENGTH = 500;
 
 export default function CreateEventForm() {
   const router = useRouter();
@@ -42,21 +51,22 @@ export default function CreateEventForm() {
     register,
     handleSubmit,
     control,
+    watch,
     formState: { errors },
   } = useForm({
-    // ✅ 1. REMOVED the explicit <CreateEventFormValues> generic type
     resolver: zodResolver(createEventSchema),
-    // ✅ 2. ADDED a complete defaultValues object.
-    // This allows TypeScript to correctly infer the form's type from the schema.
     defaultValues: {
       name: "",
       description: "",
       address: "",
-      date: "",
+      date: undefined,
+      time: "",
       price: 0,
       categoryId: "",
     },
   });
+
+  const descriptionValue = watch("description", "");
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -82,7 +92,6 @@ export default function CreateEventForm() {
     );
   };
 
-  // This SubmitHandler now works perfectly because useForm's type is correctly inferred.
   const onSubmit: SubmitHandler<CreateEventFormValues> = async (data) => {
     if (imageFiles.length === 0) {
       toast.error("Please upload at least one event image.");
@@ -119,7 +128,11 @@ export default function CreateEventForm() {
           <div className="space-y-4">
             <div>
               <Label htmlFor="name">Event Name</Label>
-              <Input id="name" {...register("name")} />
+              <Input
+                id="name"
+                placeholder="e.g., Summer Rooftop Party"
+                {...register("name")}
+              />
               {errors.name && (
                 <p className="text-sm text-destructive mt-1">
                   {errors.name.message}
@@ -127,8 +140,25 @@ export default function CreateEventForm() {
               )}
             </div>
             <div>
-              <Label htmlFor="description">Description</Label>
-              <Textarea id="description" {...register("description")} />
+              <div className="flex justify-between items-center">
+                <Label htmlFor="description">Description</Label>
+                <span
+                  className={cn(
+                    "text-xs",
+                    descriptionValue.length > MAX_DESC_LENGTH
+                      ? "text-destructive"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  {descriptionValue.length} / {MAX_DESC_LENGTH}
+                </span>
+              </div>
+              <Textarea
+                id="description"
+                placeholder="Tell everyone about your event..."
+                maxLength={MAX_DESC_LENGTH}
+                {...register("description")}
+              />
               {errors.description && (
                 <p className="text-sm text-destructive mt-1">
                   {errors.description.message}
@@ -137,7 +167,11 @@ export default function CreateEventForm() {
             </div>
             <div>
               <Label htmlFor="address">Address / Venue</Label>
-              <Input id="address" {...register("address")} />
+              <Input
+                id="address"
+                placeholder="e.g., 123 Main St, Kigali"
+                {...register("address")}
+              />
               {errors.address && (
                 <p className="text-sm text-destructive mt-1">
                   {errors.address.message}
@@ -146,8 +180,41 @@ export default function CreateEventForm() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="date">Date & Time</Label>
-                <Input id="date" type="datetime-local" {...register("date")} />
+                <Label>Date</Label>
+                <Controller
+                  name="date"
+                  control={control}
+                  render={({ field }) => (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {field.value ? (
+                            format(field.value, "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          autoFocus
+                          captionLayout="dropdown"
+                          className="rounded-md border shadow-sm"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                />
                 {errors.date && (
                   <p className="text-sm text-destructive mt-1">
                     {errors.date.message}
@@ -155,19 +222,29 @@ export default function CreateEventForm() {
                 )}
               </div>
               <div>
-                <Label htmlFor="price">Price ($)</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  step="0.01"
-                  {...register("price", { valueAsNumber: true })}
-                />
-                {errors.price && (
+                <Label htmlFor="time">Time</Label>
+                <Input id="time" type="time" {...register("time")} />
+                {errors.time && (
                   <p className="text-sm text-destructive mt-1">
-                    {errors.price.message}
+                    {errors.time.message}
                   </p>
                 )}
               </div>
+            </div>
+            <div>
+              <Label htmlFor="price">Price ($)</Label>
+              <Input
+                id="price"
+                type="number"
+                step="0.01"
+                placeholder="0.00 for free events"
+                {...register("price", { valueAsNumber: true })}
+              />
+              {errors.price && (
+                <p className="text-sm text-destructive mt-1">
+                  {errors.price.message}
+                </p>
+              )}
             </div>
             <div>
               <Label htmlFor="categoryId">Category</Label>

@@ -1,5 +1,3 @@
-// src/app/(app)/events/create/page.tsx
-
 "use client";
 
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -8,10 +6,11 @@ import CreateEventForm from "@/components/pages/events/CreateEventForm";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ShieldAlert } from "lucide-react";
+import { SystemRole } from "@/lib/features/auth/authTypes"; // ✅ 1. Import SystemRole
 
 export default function CreateEventPage() {
   const { user: authUser } = useAuth();
-  // We refetch the user data to get the latest `isVerifiedCreator` status
+  // We refetch the user data to get the latest creator status
   const { data: userData, isLoading } = useGetMeQuery(undefined, {
     skip: !authUser,
   });
@@ -30,25 +29,29 @@ export default function CreateEventPage() {
     );
   }
 
-  // Check if the user is a verified creator
-  const isVerified = userData?.data.user.isVerifiedCreator;
+  // ✅ 2. Use the complete, correct permission check.
+  const canCreateEvents =
+    userData?.data.user &&
+    (userData.data.user.isVerifiedCreator ||
+      userData.data.user.systemRole === SystemRole.ADMIN ||
+      userData.data.user.systemRole === SystemRole.SUPER_ADMIN);
 
-  if (!isVerified) {
+  if (!canCreateEvents) {
     return (
       <div className="flex items-center justify-center pt-10">
         <Alert variant="destructive" className="max-w-md text-center">
           <ShieldAlert className="h-4 w-4" />
           <AlertTitle>Access Denied</AlertTitle>
           <AlertDescription>
-            You must be a verified creator to post a new event. Please contact
-            support for verification.
+            You must be a verified creator or an administrator to post a new
+            event.
           </AlertDescription>
         </Alert>
       </div>
     );
   }
 
-  // If verified, show the form
+  // If permitted, show the form
   return (
     <div className="space-y-4">
       <div className="space-y-1">
