@@ -95,6 +95,29 @@ class EventController {
       data: { events },
     });
   });
+
+  // Controller to get a single event owned by the logged-in user
+  getMyEventById = asyncHandler(async (req: Request, res: Response) => {
+    const { eventId } = req.params;
+    const creatorId = req.user!.id;
+    const event = await eventService.findMyEventById(eventId, creatorId);
+    res.status(200).json({
+      status: "success",
+      data: { event },
+    });
+  });
+
+  // Controller to resubmit a rejected event
+  resubmitEvent = asyncHandler(async (req: Request, res: Response) => {
+    const { eventId } = req.params;
+    const creatorId = req.user!.id;
+    const event = await eventService.resubmitEvent(eventId, creatorId);
+    res.status(200).json({
+      status: "success",
+      message: "Event has been resubmitted for approval.",
+      data: { event },
+    });
+  });
 }
 
 export const eventController = new EventController();

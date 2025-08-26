@@ -193,6 +193,54 @@ export class EventService {
       .lean();
     return events;
   }
+
+  /**
+   * Finds a single event by its ID, but only if the requester is the creator.
+   * Does not check for status, allowing creators to view their pending/rejected events.
+   * @param eventId - The ID of the event to find.
+   * @param creatorId - The ID of the user requesting the event.
+   */
+  public async findMyEventById(eventId: string, creatorId: string) {
+    const event = await Event.findOne({
+      _id: eventId,
+      creatorId: creatorId, // Security check: user must be the creator
+    })
+      .populate("categoryId", "name")
+      .lean();
+
+    if (!event) {
+      throw createHttpError(404, "Event not found or you are not the creator.");
+    }
+    return event;
+  }
+
+  /**
+   * Resubmits a rejected event for approval by setting its status back to PENDING.
+   * @param eventId - The ID of the event to resubmit.
+   * @param creatorId - The ID of the user performing the action.
+   */
+  public async resubmitEvent(eventId: string, creatorId: string) {
+    const event = await Event.findOne({ _id: eventId, creatorId });
+    if (!event) {
+      throw createHttpError(404, "Event not found or you are not the creator.");
+    }
+
+    if (event.status !== EventStatus.REJECTED) {
+      throw createHttpError(
+        400,
+        `Only rejected events can be resubmitted. This event's status is '${event.status}'.`
+      );
+    }
+
+    event.status = EventStatus.PENDING;
+    await event.save();
+
+    logger.info(
+      { eventId, userId: creatorId },
+      "Event resubmitted for approval."
+    );
+    return event.toObject();
+  }
 }
 
 export const eventService = new EventService();

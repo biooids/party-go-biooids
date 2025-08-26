@@ -1,8 +1,7 @@
-// src/components/pages/events/EventDetailView.tsx
-
+//src/components/pages/events/EventDetailView.tsx
 "use client";
 
-import { useState } from "react"; // ✅ 1. Import useState to manage the selected image
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Event } from "@/lib/features/event/eventTypes";
@@ -10,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, MapPin, Ticket } from "lucide-react";
+import { Calendar, MapPin, Ticket, Share2, Bookmark } from "lucide-react"; // ✅ 1. Import new icons
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -22,14 +21,12 @@ const getInitials = (name: string) => {
 };
 
 export default function EventDetailView({ event }: { event: Event }) {
-  // ✅ 2. Keep track of the currently selected image for the main view
   const [selectedImage, setSelectedImage] = useState(event.imageUrls?.[0]);
 
   return (
     <div className="mx-auto max-w-4xl">
-      {/* ✅ 3. Image Gallery Section */}
+      {/* Image Gallery Section */}
       <div className="space-y-2">
-        {/* Main Image */}
         <div className="relative h-48 sm:h-64 md:h-96 w-full overflow-hidden rounded-lg bg-muted">
           {selectedImage && (
             <Image
@@ -42,7 +39,6 @@ export default function EventDetailView({ event }: { event: Event }) {
             />
           )}
         </div>
-        {/* Thumbnails */}
         {event.imageUrls.length > 1 && (
           <div className="grid grid-cols-5 gap-2">
             {event.imageUrls.map((url, index) => (
@@ -72,11 +68,23 @@ export default function EventDetailView({ event }: { event: Event }) {
       <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Left Column: Details */}
         <div className="md:col-span-2 space-y-4">
-          <h1 className="text-4xl font-bold tracking-tight">{event.name}</h1>
-          <div>
-            <h2 className="text-xl font-semibold">About this event</h2>
+          <div className="space-y-2">
+            <h1 className="text-4xl font-bold tracking-tight">{event.name}</h1>
             <p className="mt-2 text-muted-foreground">{event.description}</p>
           </div>
+
+          {/* ✅ 2. ADDED: New, more logical action buttons for a public viewer */}
+          <div className="flex gap-2">
+            <Button variant="outline">
+              <Share2 className="mr-2 h-4 w-4" />
+              Share
+            </Button>
+            <Button>
+              <Bookmark className="mr-2 h-4 w-4" />
+              Save Event
+            </Button>
+          </div>
+
           <div>
             <h3 className="text-lg font-semibold">Created by</h3>
             <Link
@@ -125,17 +133,20 @@ export default function EventDetailView({ event }: { event: Event }) {
                   </p>
                 </div>
               </div>
+              <div className="flex items-start gap-3">
+                <Ticket className="h-5 w-5 mt-1 text-muted-foreground" />
+                <div>
+                  <p className="font-semibold">Price</p>
+                  <p className="text-sm text-muted-foreground">
+                    {event.price > 0 ? `$${event.price.toFixed(2)}` : "Free"}
+                  </p>
+                </div>
+              </div>
               <div className="pt-2">
                 <Badge variant="secondary">{event.categoryId.name}</Badge>
               </div>
             </CardContent>
           </Card>
-          <Button size="lg" className="w-full">
-            <Ticket className="mr-2 h-5 w-5" />
-            {event.price > 0
-              ? `Buy Tickets - $${event.price.toFixed(2)}`
-              : "Register for Free"}
-          </Button>
         </div>
       </div>
     </div>

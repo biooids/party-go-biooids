@@ -100,6 +100,29 @@ export const eventApiSlice = apiSlice.injectEndpoints({
         { type: "Events", id: "MY_LIST" },
       ],
     }),
+
+    /**
+     *  New query to fetch a single event owned by the current user.
+     * This is used for the private "My Events" detail page and the edit dialog.
+     */
+    getMyEventById: builder.query<GetEventApiResponse, string>({
+      query: (eventId) => `/events/my/${eventId}`,
+      providesTags: (result, error, id) => [{ type: "Events", id }],
+    }),
+
+    /**
+     * Resubmits a rejected event for approval.
+     */
+    resubmitEvent: builder.mutation<Event, string>({
+      query: (eventId) => ({
+        url: `/events/my/${eventId}/resubmit`,
+        method: "PATCH",
+      }),
+      invalidatesTags: (result, error, eventId) => [
+        { type: "Events", id: "MY_LIST" },
+        { type: "Events", id: eventId },
+      ],
+    }),
   }),
 });
 
@@ -110,4 +133,6 @@ export const {
   useCreateEventMutation,
   useUpdateEventMutation,
   useDeleteEventMutation,
+  useGetMyEventByIdQuery,
+  useResubmitEventMutation,
 } = eventApiSlice;

@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useGetEventByIdQuery } from "@/lib/features/event/eventApiSlice";
+import { useGetMyEventByIdQuery } from "@/lib/features/event/eventApiSlice"; // ✅ FIXED: Use the new private query
 import EditEventForm from "./EditEventForm";
 import {
   Dialog,
@@ -26,11 +26,11 @@ export default function EditEventDialog({
   isOpen,
   onOpenChange,
 }: EditEventDialogProps) {
-  // Fetch the specific event data when the dialog is opened
-  const { data, isLoading, isError, isSuccess } = useGetEventByIdQuery(
+  // ✅ FIXED: Use the new private query hook
+  const { data, isLoading, isError, isSuccess } = useGetMyEventByIdQuery(
     eventId,
     {
-      skip: !isOpen, // Only fetch when the dialog is open
+      skip: !isOpen,
     }
   );
 

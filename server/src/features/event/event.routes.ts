@@ -1,5 +1,3 @@
-// src/features/event/event.routes.ts
-
 import { Router } from "express";
 import { eventController } from "./event.controller.js";
 import { validate } from "../../middleware/validate.js";
@@ -13,9 +11,20 @@ const requireAuth = authenticate({ required: true });
 
 // --- Public Routes ---
 router.get("/", eventController.getAll);
-router.get("/:eventId", eventController.getOne);
 
 // --- Protected Routes ---
+
+router.get("/me", requireAuth, eventController.getMyEvents);
+// GET /api/v1/events/my/:eventId - Get a single event created by the current user
+router.get("/my/:eventId", requireAuth, eventController.getMyEventById);
+router.patch(
+  "/my/:eventId/resubmit",
+  requireAuth,
+  eventController.resubmitEvent
+);
+
+// This public route is now correctly placed after the more specific '/me' route.
+router.get("/:eventId", eventController.getOne);
 
 // POST /api/v1/events - Create a new event
 router.post(
@@ -37,6 +46,7 @@ router.patch(
 
 // DELETE /api/v1/events/:eventId - Delete an event
 router.delete("/:eventId", requireAuth, eventController.remove);
-router.get("/me", requireAuth, eventController.getMyEvents);
+
+// ❌ REMOVED FROM HERE
 
 export default router;
