@@ -24,6 +24,7 @@ export interface Event {
   imageUrls: string[];
   status: EventStatus;
   isSaved?: boolean;
+  commentCount?: number;
 
   creatorId: {
     _id: string;

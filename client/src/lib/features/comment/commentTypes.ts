@@ -22,6 +22,7 @@ export interface Comment {
   replies: Comment[]; // Replies are nested inside their parent
   createdAt: string;
   updatedAt: string;
+  replyCount?: number;
 }
 
 /**

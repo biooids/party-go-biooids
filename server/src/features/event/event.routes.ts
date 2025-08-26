@@ -6,6 +6,7 @@ import { authenticate } from "../../middleware/authenticate.js";
 import { checkVerification } from "../../middleware/checkVerification.js";
 import { uploadImage } from "../../middleware/multer.config.js";
 import { saveEventSubRouter } from "../savedEvent/savedEvent.routes.js";
+import { commentSubRouter } from "../comment/comment.routes.js";
 
 const router: Router = Router();
 const requireAuth = authenticate({ required: true });
@@ -49,5 +50,6 @@ router.patch(
 router.delete("/:eventId", requireAuth, eventController.remove);
 
 router.use("/:eventId/save", saveEventSubRouter);
+router.use("/:eventId/comments", commentSubRouter);
 
 export default router;

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { mainNavLinks, settingsLink } from "@/lib/nav-links";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/hooks/useAuth";
-import { SystemRole } from "@/lib/features/auth/authTypes"; // ✅ 1. Import SystemRole
+import { SystemRole } from "@/lib/features/auth/authTypes";
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -20,16 +20,19 @@ export default function Sidebar() {
       </div>
       <div className="flex-1 overflow-y-auto">
         <nav className="grid items-start gap-1 p-4 text-sm font-medium">
-          {/* ✅ 2. Updated filter logic to handle both roles and verification status */}
+          {/* ✅ FIXED: This filter logic now correctly checks for both roles and verification status. */}
           {mainNavLinks
             .filter((link) => {
               const hasRolePermission =
                 !link.roles || (user && link.roles.includes(user.systemRole));
+
               const hasVerificationPermission =
                 !link.requiresVerification ||
                 (user &&
                   (user.isVerifiedCreator ||
-                    user.systemRole !== SystemRole.USER));
+                    user.systemRole === SystemRole.ADMIN ||
+                    user.systemRole === SystemRole.SUPER_ADMIN));
+
               return hasRolePermission && hasVerificationPermission;
             })
             .map((link) => {

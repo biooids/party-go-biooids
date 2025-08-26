@@ -207,6 +207,7 @@ export class AdminService {
       status: VerificationStatus.PENDING,
     })
       .populate("userId", "name username email")
+      .populate("preferredCategories", "name")
       .sort({ createdAt: 1 })
       .skip((page - 1) * limit)
       .limit(limit)

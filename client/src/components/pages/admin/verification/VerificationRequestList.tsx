@@ -52,7 +52,7 @@ const RequestCard = ({ request }: { request: VerificationRequest }) => {
   };
 
   if (actionTaken) {
-    return null; // Hide the card after an action is taken to clear the queue
+    return null;
   }
 
   const isLoading = isApproving || isRejecting;
@@ -73,6 +73,7 @@ const RequestCard = ({ request }: { request: VerificationRequest }) => {
             <CardDescription>Location: {request.location}</CardDescription>
           </div>
           <div className="flex flex-wrap gap-1 justify-end">
+            {/* This .map() will now work correctly with the populated data */}
             {request.preferredCategories.map((category) => (
               <Badge key={category._id} variant="secondary">
                 {category.name}

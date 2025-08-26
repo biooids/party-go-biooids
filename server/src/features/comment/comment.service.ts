@@ -5,32 +5,68 @@ import { CreateCommentInputDto } from "./comment.types.js";
 import { createHttpError } from "../../utils/error.factory.js";
 import { SystemRole } from "../../types/user.types.js";
 import { logger } from "../../config/logger.js";
+import EventModel from "../event/event.model.js";
+import { config } from "../../config/index.js"; // ✅ ADDED: The missing import for the config object.
 
 export class CommentService {
   /**
-   * Creates a new comment or a reply on an event.
+   * Creates a new comment or a reply and increments the relevant counters.
+   */
+  /**
+   * Creates a new comment or a reply and increments the relevant counters.
+   * Uses transactions only in the production environment.
    */
   async createComment(
     input: CreateCommentInputDto,
     eventId: string,
     authorId: string
   ) {
-    const newComment = await Comment.create({
+    const newComment = new Comment({
       ...input,
       eventId,
       authorId,
     });
-    logger.info(
-      { commentId: newComment._id, eventId, authorId },
-      "New comment posted."
-    );
-    // Populate author details for the immediate response
-    return newComment.populate({
-      path: "authorId",
-      select: "name username profileImage",
-    });
-  }
 
+    // ✅ Conditionally start a session only in production
+    const session =
+      config.nodeEnv === "production" ? await Comment.startSession() : null;
+    if (session) session.startTransaction();
+
+    try {
+      await newComment.save(session ? { session } : {});
+
+      await EventModel.findByIdAndUpdate(
+        eventId,
+        { $inc: { commentCount: 1 } },
+        session ? { session } : {}
+      );
+
+      if (newComment.parentId) {
+        await Comment.findByIdAndUpdate(
+          newComment.parentId,
+          { $inc: { replyCount: 1 } },
+          session ? { session } : {}
+        );
+      }
+
+      if (session) await session.commitTransaction();
+
+      logger.info(
+        { commentId: newComment._id, eventId, authorId },
+        "New comment posted and counters updated."
+      );
+
+      return newComment.populate({
+        path: "authorId",
+        select: "name username profileImage",
+      });
+    } catch (error) {
+      if (session) await session.abortTransaction();
+      throw error;
+    } finally {
+      if (session) session.endSession();
+    }
+  }
   /**
    * Retrieves all comments for a specific event, structured as threads.
    */
@@ -85,7 +121,11 @@ export class CommentService {
   }
 
   /**
-   * Deletes a comment. Also deletes all direct replies to that comment.
+   * Deletes a comment and decrements the relevant counters.
+   */
+  /**
+   * Deletes a comment and decrements the relevant counters.
+   * Uses transactions only in the production environment.
    */
   async deleteComment(
     commentId: string,
@@ -96,7 +136,6 @@ export class CommentService {
       throw createHttpError(404, "Comment not found.");
     }
 
-    // Permission check: Only the author or an admin can delete.
     if (
       comment.authorId.toString() !== user.id &&
       user.systemRole !== SystemRole.ADMIN &&
@@ -108,14 +147,55 @@ export class CommentService {
       );
     }
 
-    // If it's a parent comment, delete all its replies as well.
-    if (!comment.parentId) {
-      await Comment.deleteMany({ parentId: commentId });
-    }
+    // ✅ Conditionally start a session only in production
+    const session =
+      config.nodeEnv === "production" ? await Comment.startSession() : null;
+    if (session) session.startTransaction();
 
-    await Comment.findByIdAndDelete(commentId);
-    logger.warn({ commentId, userId: user.id }, "Comment deleted.");
-    return { message: "Comment deleted successfully." };
+    try {
+      let decrementCount = 1;
+
+      if (!comment.parentId) {
+        const repliesToDelete = await Comment.find({
+          parentId: commentId,
+        }).lean();
+        decrementCount += repliesToDelete.length;
+        if (repliesToDelete.length > 0) {
+          await Comment.deleteMany(
+            { parentId: commentId },
+            session ? { session } : {}
+          );
+        }
+      } else {
+        await Comment.findByIdAndUpdate(
+          comment.parentId,
+          { $inc: { replyCount: -1 } },
+          session ? { session } : {}
+        );
+      }
+
+      await EventModel.findByIdAndUpdate(
+        comment.eventId,
+        { $inc: { commentCount: -decrementCount } },
+        session ? { session } : {}
+      );
+
+      await Comment.findByIdAndDelete(commentId, session ? { session } : {});
+
+      if (session) await session.commitTransaction();
+
+      logger.warn(
+        { commentId, userId: user.id },
+        "Comment and any replies deleted, counters updated."
+      );
+
+      return { message: "Comment deleted successfully." };
+    } catch (error) {
+      if (session) await session.abortTransaction();
+      throw error;
+    } finally {
+      if (session) session.endSession();
+    }
   }
 }
 

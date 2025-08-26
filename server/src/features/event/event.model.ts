@@ -34,6 +34,10 @@ const eventSchema = new Schema(
       ref: "EventCategory",
       required: true,
     },
+    commentCount: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true }
 );

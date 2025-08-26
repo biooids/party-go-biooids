@@ -1,5 +1,3 @@
-// src/components/pages/events/EventDetailView.tsx
-
 "use client";
 
 import { useState } from "react";
@@ -29,6 +27,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import EventComments from "./comments/EventComments";
+
 const getInitials = (name: string) => {
   const words = name.split(" ").filter(Boolean);
   if (words.length === 0) return "?";
@@ -37,6 +36,9 @@ const getInitials = (name: string) => {
 };
 
 export default function EventDetailView({ event }: { event: Event }) {
+  // ✅ ADD THIS LOG: Check the browser console to inspect the 'event' object.
+  console.log("Event data received by component:", event);
+
   const { user } = useAuth();
   const [selectedImage, setSelectedImage] = useState(event.imageUrls?.[0]);
   const [isCopied, setIsCopied] = useState(false);
@@ -69,7 +71,7 @@ export default function EventDetailView({ event }: { event: Event }) {
   };
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-4xl space-y-8">
       <div className="space-y-2">
         <div className="relative h-48 sm:h-64 md:h-96 w-full overflow-hidden rounded-lg bg-muted">
           {selectedImage && (
@@ -205,7 +207,10 @@ export default function EventDetailView({ event }: { event: Event }) {
 
       <Separator />
       <div>
-        <h2 className="text-2xl font-bold tracking-tight mb-4">Comments</h2>
+        <h2 className="text-2xl font-bold tracking-tight mb-4">
+          Comments{" "}
+          {typeof event.commentCount === "number" && `(${event.commentCount})`}
+        </h2>
         <EventComments eventId={event._id} />
       </div>
     </div>

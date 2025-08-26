@@ -32,8 +32,10 @@ export const commentApiSlice = apiSlice.injectEndpoints({
         method: "POST",
         body,
       }),
+      // ✅ FIXED: Now invalidates both the comment list AND the parent event.
       invalidatesTags: (result, error, { eventId }) => [
         { type: "Comments", id: eventId },
+        { type: "Events", id: eventId },
       ],
     }),
 
@@ -49,21 +51,32 @@ export const commentApiSlice = apiSlice.injectEndpoints({
         method: "PATCH",
         body: { content },
       }),
+      // ✅ FIXED: Also invalidates the parent event tag.
       invalidatesTags: (result, error, { commentId }) =>
-        result ? [{ type: "Comments", id: result.eventId }] : [],
+        result
+          ? [
+              { type: "Comments", id: result.eventId },
+              { type: "Events", id: result.eventId },
+            ]
+          : [],
     }),
 
     /**
      * Deletes a comment.
      */
-    deleteComment: builder.mutation<{ message: string }, string>({
-      query: (commentId) => ({
+    deleteComment: builder.mutation<
+      { message: string },
+      { commentId: string; eventId: string }
+    >({
+      query: ({ commentId }) => ({
         url: `/comments/${commentId}`,
         method: "DELETE",
       }),
-      // This invalidation is more complex, as we don't know the eventId
-      // after deletion. Refetching all comments might be necessary.
-      // For now, we'll rely on optimistic updates in the UI.
+      // ✅ FIXED: Also invalidates the parent event tag.
+      invalidatesTags: (result, error, { eventId }) => [
+        { type: "Comments", id: eventId },
+        { type: "Events", id: eventId },
+      ],
     }),
   }),
 });
