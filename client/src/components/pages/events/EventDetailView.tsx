@@ -27,7 +27,8 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-
+import { Separator } from "@/components/ui/separator";
+import EventComments from "./comments/EventComments";
 const getInitials = (name: string) => {
   const words = name.split(" ").filter(Boolean);
   if (words.length === 0) return "?";
@@ -200,6 +201,12 @@ export default function EventDetailView({ event }: { event: Event }) {
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      <Separator />
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight mb-4">Comments</h2>
+        <EventComments eventId={event._id} />
       </div>
     </div>
   );
