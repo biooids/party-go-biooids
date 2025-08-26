@@ -19,6 +19,7 @@ export const apiSlice = createApi({
     "EventCategories",
     "PendingVerificationRequests",
     "VerificationRequest",
+    "SavedEvents",
   ],
   endpoints: (builder) => ({}),
 });

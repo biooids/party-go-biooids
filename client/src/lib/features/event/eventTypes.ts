@@ -21,9 +21,10 @@ export interface Event {
   address: string;
   date: string; // Dates are transmitted as ISO strings
   price: number;
-  // ✅ FIXED: Changed from a single string to an array of strings for multiple images.
   imageUrls: string[];
   status: EventStatus;
+  isSaved?: boolean;
+
   creatorId: {
     _id: string;
     name: string;
@@ -48,7 +49,6 @@ export interface CreateEventDto {
   address: string;
   date: string; // ISO string
   price: number;
-  // ✅ REMOVED: imageUrl is no longer a text field; it's a file upload.
   categoryId: string;
 }
 

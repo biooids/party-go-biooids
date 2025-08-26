@@ -8,9 +8,7 @@ import eventRoutes from "../features/event/event.routes.js";
 import eventCategoryRoutes from "../features/eventCategory/eventCategory.routes.js";
 import adminRoutes from "../features/admin/admin.routes.js";
 import verificationRequestRoutes from "../features/verificationRequest/verificationRequest.routes.js";
-
-// Main API router that aggregates all feature routes
-// This router is used to handle all API requests in the application.
+import { savedEventRoutes } from "../features/savedEvent/savedEvent.routes.js";
 
 const router: Router = Router();
 
@@ -29,5 +27,6 @@ router.use("/events", eventRoutes);
 router.use("/event-categories", eventCategoryRoutes);
 router.use("/admin", adminRoutes);
 router.use("/verification-requests", verificationRequestRoutes);
+router.use("/saved-events", savedEventRoutes);
 
 export default router;

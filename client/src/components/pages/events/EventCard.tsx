@@ -5,6 +5,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Event } from "@/lib/features/event/eventTypes";
+import { useAuth } from "@/lib/hooks/useAuth";
+import {
+  useSaveEventMutation,
+  useUnsaveEventMutation,
+} from "@/lib/features/savedEvent/savedEventApiSlice";
+import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -13,19 +19,43 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, ImageIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MapPin, ImageIcon, Bookmark, BookmarkCheck } from "lucide-react";
 import { format } from "date-fns";
 
 export default function EventCard({ event }: { event: Event }) {
-  // ✅ 1. Get the first image from the array to use as the thumbnail.
+  const { user } = useAuth();
+  const [saveEvent] = useSaveEventMutation();
+  const [unsaveEvent] = useUnsaveEventMutation();
+
   const primaryImageUrl = event.imageUrls?.[0];
 
+  const handleSaveToggle = (e: React.MouseEvent) => {
+    // Prevent the click from navigating the user
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!user) {
+      toast.error("You must be logged in to save events.");
+      return;
+    }
+
+    const action = event.isSaved
+      ? unsaveEvent(event._id)
+      : saveEvent(event._id);
+
+    toast.promise(action.unwrap(), {
+      loading: event.isSaved ? "Unsaving..." : "Saving...",
+      success: event.isSaved ? "Event unsaved!" : "Event saved!",
+      error: (err) => err.data?.message || "An error occurred.",
+    });
+  };
+
   return (
-    <Link href={`/events/${event._id}`} className="group">
-      <Card className="overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1">
+    <Card className="overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1">
+      <Link href={`/events/${event._id}`} className="group">
         <CardHeader className="p-0">
           <div className="relative h-48 w-full bg-muted">
-            {/* ✅ 2. Display the primary image, or a placeholder if none exists. */}
             {primaryImageUrl ? (
               <Image
                 src={primaryImageUrl}
@@ -39,8 +69,28 @@ export default function EventCard({ event }: { event: Event }) {
                 <ImageIcon className="h-12 w-12 text-muted-foreground/30" />
               </div>
             )}
+            {/* Save/Unsave Icon Button */}
+            {user && (
+              <Button
+                variant="secondary"
+                size="icon"
+                className="absolute top-2 left-2 h-8 w-8 rounded-full"
+                onClick={handleSaveToggle}
+              >
+                {event.isSaved ? (
+                  <BookmarkCheck className="h-4 w-4 text-primary" />
+                ) : (
+                  <Bookmark className="h-4 w-4" />
+                )}
+                <span className="sr-only">
+                  {event.isSaved ? "Unsave event" : "Save event"}
+                </span>
+              </Button>
+            )}
             <div className="absolute top-2 right-2">
-              <Badge>${event.price.toFixed(2)}</Badge>
+              <Badge>
+                {event.price > 0 ? `$${event.price.toFixed(2)}` : "Free"}
+              </Badge>
             </div>
           </div>
         </CardHeader>
@@ -56,10 +106,10 @@ export default function EventCard({ event }: { event: Event }) {
             {event.address}
           </p>
         </CardContent>
-        <CardFooter className="p-4 pt-0">
-          <Badge variant="secondary">{event.categoryId.name}</Badge>
-        </CardFooter>
-      </Card>
-    </Link>
+      </Link>
+      <CardFooter className="p-4 pt-0">
+        <Badge variant="secondary">{event.categoryId.name}</Badge>
+      </CardFooter>
+    </Card>
   );
 }

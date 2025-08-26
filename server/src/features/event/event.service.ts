@@ -9,6 +9,7 @@ import {
   uploadToCloudinary,
 } from "../../config/cloudinary.js";
 import { logger } from "../../config/logger.js";
+import SavedEvent from "../savedEvent/savedEvent.model.js";
 
 // Define what fields to return when populating creator info
 const creatorPopulation = {
@@ -63,7 +64,7 @@ export class EventService {
   /**
    * Finds a single event by its ID, but only if it is approved.
    */
-  public async findApprovedEventById(eventId: string) {
+  public async findApprovedEventById(eventId: string, userId?: string) {
     const event = await Event.findOne({
       _id: eventId,
       status: EventStatus.APPROVED,
@@ -75,7 +76,21 @@ export class EventService {
     if (!event) {
       throw createHttpError(404, "Event not found or not approved.");
     }
-    return event;
+
+    // If a user is logged in, check if they have saved this event.
+    let isSaved = false;
+    if (userId) {
+      const savedEvent = await SavedEvent.findOne({
+        eventId: event._id,
+        userId,
+      }).lean();
+      if (savedEvent) {
+        isSaved = true;
+      }
+    }
+
+    // Add the isSaved flag to the returned object
+    return { ...event, isSaved };
   }
 
   /**

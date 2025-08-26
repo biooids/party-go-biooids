@@ -1,15 +1,30 @@
-//src/components/pages/events/EventDetailView.tsx
+// src/components/pages/events/EventDetailView.tsx
+
 "use client";
 
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Event } from "@/lib/features/event/eventTypes";
+import {
+  useSaveEventMutation,
+  useUnsaveEventMutation,
+} from "@/lib/features/savedEvent/savedEventApiSlice";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, MapPin, Ticket, Share2, Bookmark } from "lucide-react"; // ✅ 1. Import new icons
+import {
+  Calendar,
+  MapPin,
+  Ticket,
+  Share2,
+  Bookmark,
+  BookmarkCheck,
+  Check,
+} from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -21,11 +36,39 @@ const getInitials = (name: string) => {
 };
 
 export default function EventDetailView({ event }: { event: Event }) {
+  const { user } = useAuth();
   const [selectedImage, setSelectedImage] = useState(event.imageUrls?.[0]);
+  const [isCopied, setIsCopied] = useState(false);
+
+  const [saveEvent, { isLoading: isSaving }] = useSaveEventMutation();
+  const [unsaveEvent, { isLoading: isUnsaving }] = useUnsaveEventMutation();
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setIsCopied(true);
+    toast.success("Link copied to clipboard!");
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  const handleSaveToggle = () => {
+    if (!user) {
+      toast.error("You must be logged in to save events.");
+      return;
+    }
+
+    const action = event.isSaved
+      ? unsaveEvent(event._id)
+      : saveEvent(event._id);
+
+    toast.promise(action.unwrap(), {
+      loading: event.isSaved ? "Unsaving event..." : "Saving event...",
+      success: event.isSaved ? "Event unsaved!" : "Event saved!",
+      error: (err) => err.data?.message || "An error occurred.",
+    });
+  };
 
   return (
     <div className="mx-auto max-w-4xl">
-      {/* Image Gallery Section */}
       <div className="space-y-2">
         <div className="relative h-48 sm:h-64 md:h-96 w-full overflow-hidden rounded-lg bg-muted">
           {selectedImage && (
@@ -64,25 +107,35 @@ export default function EventDetailView({ event }: { event: Event }) {
         )}
       </div>
 
-      {/* Main Content */}
       <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Left Column: Details */}
         <div className="md:col-span-2 space-y-4">
           <div className="space-y-2">
             <h1 className="text-4xl font-bold tracking-tight">{event.name}</h1>
             <p className="mt-2 text-muted-foreground">{event.description}</p>
           </div>
 
-          {/* ✅ 2. ADDED: New, more logical action buttons for a public viewer */}
           <div className="flex gap-2">
-            <Button variant="outline">
-              <Share2 className="mr-2 h-4 w-4" />
-              Share
+            <Button variant="outline" onClick={handleShare}>
+              {isCopied ? (
+                <Check className="mr-2 h-4 w-4 text-green-500" />
+              ) : (
+                <Share2 className="mr-2 h-4 w-4" />
+              )}
+              {isCopied ? "Copied!" : "Share"}
             </Button>
-            <Button>
-              <Bookmark className="mr-2 h-4 w-4" />
-              Save Event
-            </Button>
+            {user && (
+              <Button
+                onClick={handleSaveToggle}
+                disabled={isSaving || isUnsaving}
+              >
+                {event.isSaved ? (
+                  <BookmarkCheck className="mr-2 h-4 w-4" />
+                ) : (
+                  <Bookmark className="mr-2 h-4 w-4" />
+                )}
+                {event.isSaved ? "Saved" : "Save Event"}
+              </Button>
+            )}
           </div>
 
           <div>
@@ -109,7 +162,6 @@ export default function EventDetailView({ event }: { event: Event }) {
           </div>
         </div>
 
-        {/* Right Column: Info & Actions */}
         <div className="space-y-4">
           <Card>
             <CardContent className="p-4 space-y-3">

@@ -7,7 +7,8 @@ import {
   Compass,
   ShieldCheck,
   PlusSquare,
-  ClipboardList, // ✅ 1. Import a new icon for "My Events"
+  ClipboardList,
+  Bookmark, // ✅ 1. Import a new icon
   type LucideIcon,
 } from "lucide-react";
 import { SystemRole } from "@/lib/features/auth/authTypes";
@@ -17,7 +18,6 @@ export type NavLink = {
   label: string;
   icon: LucideIcon;
   roles?: SystemRole[];
-  // ✅ 2. Add a new property to check for verification status
   requiresVerification?: boolean;
 };
 
@@ -33,12 +33,17 @@ export const mainNavLinks: NavLink[] = [
     label: "Explore",
     icon: Compass,
   },
-  // ✅ 3. ADDED: The new link to the "My Events" page
+  // ✅ 2. ADDED: The new link to the "Saved Events" page
+  {
+    href: "/saved-events",
+    label: "Saved Events",
+    icon: Bookmark,
+  },
   {
     href: "/my-events",
     label: "My Events",
     icon: ClipboardList,
-    requiresVerification: true, // This link will only show for creators/admins
+    requiresVerification: true,
   },
   {
     href: "/profile/me",

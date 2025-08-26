@@ -5,6 +5,7 @@ import { createEventSchema, updateEventSchema } from "./event.validation.js";
 import { authenticate } from "../../middleware/authenticate.js";
 import { checkVerification } from "../../middleware/checkVerification.js";
 import { uploadImage } from "../../middleware/multer.config.js";
+import { saveEventSubRouter } from "../savedEvent/savedEvent.routes.js";
 
 const router: Router = Router();
 const requireAuth = authenticate({ required: true });
@@ -47,6 +48,6 @@ router.patch(
 // DELETE /api/v1/events/:eventId - Delete an event
 router.delete("/:eventId", requireAuth, eventController.remove);
 
-// ❌ REMOVED FROM HERE
+router.use("/:eventId/save", saveEventSubRouter);
 
 export default router;
