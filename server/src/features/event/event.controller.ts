@@ -76,6 +76,25 @@ class EventController {
     await eventService.deleteEvent(eventId, user);
     res.status(204).send();
   });
+
+  // Controller to get all events created by the logged-in user
+  getMyEvents = asyncHandler(async (req: Request, res: Response) => {
+    const creatorId = req.user!.id;
+    const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
+    const limit = req.query.limit
+      ? parseInt(req.query.limit as string, 10)
+      : 10;
+    const events = await eventService.findEventsByCreator(
+      creatorId,
+      page,
+      limit
+    );
+    res.status(200).json({
+      status: "success",
+      results: events.length,
+      data: { events },
+    });
+  });
 }
 
 export const eventController = new EventController();

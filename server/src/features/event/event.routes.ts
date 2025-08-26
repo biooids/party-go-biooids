@@ -37,5 +37,6 @@ router.patch(
 
 // DELETE /api/v1/events/:eventId - Delete an event
 router.delete("/:eventId", requireAuth, eventController.remove);
+router.get("/me", requireAuth, eventController.getMyEvents);
 
 export default router;

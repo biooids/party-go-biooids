@@ -2,8 +2,10 @@
 
 import { apiSlice } from "../../api/apiSlice";
 import {
+  CreateEventDto,
   GetEventsApiResponse,
   GetEventApiResponse,
+  GetMyEventsApiResponse, // ✅ 1. Import the new type
   UpdateEventDto,
   Event,
 } from "./eventTypes";
@@ -11,7 +13,7 @@ import {
 export const eventApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     /**
-     * Fetches a paginated list of all approved events.
+     * Fetches a paginated list of all approved public events.
      */
     getEvents: builder.query<
       GetEventsApiResponse,
@@ -32,6 +34,18 @@ export const eventApiSlice = apiSlice.injectEndpoints({
     }),
 
     /**
+     * Fetches all events created by the currently logged-in user.
+     */
+    getMyEvents: builder.query<
+      GetMyEventsApiResponse,
+      { page?: number; limit?: number }
+    >({
+      query: ({ page = 1, limit = 10 }) =>
+        `/events/me?page=${page}&limit=${limit}`,
+      providesTags: [{ type: "Events", id: "MY_LIST" }],
+    }),
+
+    /**
      * Fetches a single approved event by its ID.
      */
     getEventById: builder.query<GetEventApiResponse, string>({
@@ -40,20 +54,20 @@ export const eventApiSlice = apiSlice.injectEndpoints({
     }),
 
     /**
-     * Creates a new event. Requires user to be a verified creator.
+     * Creates a new event.
      */
-    // ✅ FIXED: The mutation now expects FormData as its input.
-    createEvent: builder.mutation<Event, FormData>({
+    createEvent: builder.mutation<GetEventApiResponse, FormData>({
       query: (body) => ({
         url: "/events",
         method: "POST",
         body,
       }),
-      invalidatesTags: [{ type: "Events", id: "LIST" }],
+      // After creating, invalidate the user's list to show the new pending event.
+      invalidatesTags: [{ type: "Events", id: "MY_LIST" }],
     }),
 
     /**
-     * Updates an existing event. Requires user to be the creator or an admin.
+     * Updates an existing event.
      */
     updateEvent: builder.mutation<
       Event,
@@ -64,27 +78,34 @@ export const eventApiSlice = apiSlice.injectEndpoints({
         method: "PATCH",
         body,
       }),
+      // After updating, invalidate both the public list and the user's list.
       invalidatesTags: (result, error, { eventId }) => [
         { type: "Events", id: "LIST" },
+        { type: "Events", id: "MY_LIST" },
         { type: "Events", id: eventId },
       ],
     }),
 
     /**
-     * Deletes an event. Requires user to be the creator or an admin.
+     * Deletes an event.
      */
     deleteEvent: builder.mutation<{ message: string }, string>({
       query: (eventId) => ({
         url: `/events/${eventId}`,
         method: "DELETE",
       }),
-      invalidatesTags: [{ type: "Events", id: "LIST" }],
+      // After deleting, invalidate both lists.
+      invalidatesTags: [
+        { type: "Events", id: "LIST" },
+        { type: "Events", id: "MY_LIST" },
+      ],
     }),
   }),
 });
 
 export const {
   useGetEventsQuery,
+  useGetMyEventsQuery,
   useGetEventByIdQuery,
   useCreateEventMutation,
   useUpdateEventMutation,

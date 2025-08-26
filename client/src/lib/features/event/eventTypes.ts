@@ -77,3 +77,14 @@ export interface GetEventApiResponse {
     event: Event;
   };
 }
+
+/**
+ *  The shape of the API response for fetching the current user's events.
+ */
+export interface GetMyEventsApiResponse {
+  status: string;
+  results: number;
+  data: {
+    events: Event[];
+  };
+}

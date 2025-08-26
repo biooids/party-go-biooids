@@ -95,6 +95,10 @@ export class EventService {
   /**
    * Updates an event. Only the creator or an admin can perform this action.
    */
+  /**
+   * Updates an event. Only the creator or an admin can perform this action.
+   * If an approved event is edited, it is set back to pending for re-approval.
+   */
   public async updateEvent(
     eventId: string,
     updateData: UpdateEventInputDto,
@@ -114,6 +118,17 @@ export class EventService {
       throw createHttpError(
         403,
         "You are not authorized to update this event."
+      );
+    }
+
+    const wasApproved = event.status === EventStatus.APPROVED;
+    const isCreatorEditing = event.creatorId.toString() === user.id;
+
+    if (wasApproved && isCreatorEditing) {
+      event.status = EventStatus.PENDING;
+      logger.info(
+        { eventId, userId: user.id },
+        "Approved event was edited by creator and has been reset to PENDING status."
       );
     }
 
@@ -163,6 +178,20 @@ export class EventService {
 
     await Event.findByIdAndDelete(eventId);
     return { message: "Event deleted successfully." };
+  }
+
+  /**
+   * Finds all events created by a specific user, with pagination.
+   * @param creatorId - The ID of the user who created the events.
+   */
+  public async findEventsByCreator(creatorId: string, page = 1, limit = 10) {
+    const events = await Event.find({ creatorId })
+      .populate("categoryId", "name")
+      .sort({ createdAt: -1 }) // Show newest first
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+    return events;
   }
 }
 

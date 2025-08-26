@@ -6,7 +6,8 @@ import {
   User as UserIcon,
   Compass,
   ShieldCheck,
-  PlusSquare, // ✅ 1. Import a new icon for the "Create Event" button
+  PlusSquare,
+  ClipboardList, // ✅ 1. Import a new icon for "My Events"
   type LucideIcon,
 } from "lucide-react";
 import { SystemRole } from "@/lib/features/auth/authTypes";
@@ -16,6 +17,8 @@ export type NavLink = {
   label: string;
   icon: LucideIcon;
   roles?: SystemRole[];
+  // ✅ 2. Add a new property to check for verification status
+  requiresVerification?: boolean;
 };
 
 // The main array of navigation links for the sidebar
@@ -29,6 +32,13 @@ export const mainNavLinks: NavLink[] = [
     href: "/events",
     label: "Explore",
     icon: Compass,
+  },
+  // ✅ 3. ADDED: The new link to the "My Events" page
+  {
+    href: "/my-events",
+    label: "My Events",
+    icon: ClipboardList,
+    requiresVerification: true, // This link will only show for creators/admins
   },
   {
     href: "/profile/me",

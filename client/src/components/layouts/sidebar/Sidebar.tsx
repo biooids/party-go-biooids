@@ -4,11 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { mainNavLinks, settingsLink } from "@/lib/nav-links";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/lib/hooks/useAuth"; // ✅ 1. Import the useAuth hook
+import { useAuth } from "@/lib/hooks/useAuth";
+import { SystemRole } from "@/lib/features/auth/authTypes"; // ✅ 1. Import SystemRole
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user } = useAuth(); // ✅ 2. Get the current authenticated user
+  const { user } = useAuth();
 
   return (
     <aside className="hidden h-full w-64 flex-col border-r bg-background shrink-0 md:flex">
@@ -19,12 +20,17 @@ export default function Sidebar() {
       </div>
       <div className="flex-1 overflow-y-auto">
         <nav className="grid items-start gap-1 p-4 text-sm font-medium">
-          {/* ✅ 3. Filter the links based on user role before mapping */}
+          {/* ✅ 2. Updated filter logic to handle both roles and verification status */}
           {mainNavLinks
             .filter((link) => {
-              return (
-                !link.roles || (user && link.roles.includes(user.systemRole))
-              );
+              const hasRolePermission =
+                !link.roles || (user && link.roles.includes(user.systemRole));
+              const hasVerificationPermission =
+                !link.requiresVerification ||
+                (user &&
+                  (user.isVerifiedCreator ||
+                    user.systemRole !== SystemRole.USER));
+              return hasRolePermission && hasVerificationPermission;
             })
             .map((link) => {
               const isActive = pathname === link.href;

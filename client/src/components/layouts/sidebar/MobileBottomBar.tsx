@@ -4,16 +4,23 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { mainNavLinks } from "@/lib/nav-links";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/lib/hooks/useAuth"; // ✅ 1. Import the useAuth hook
+import { useAuth } from "@/lib/hooks/useAuth";
+import { SystemRole } from "@/lib/features/auth/authTypes"; // ✅ 1. Import SystemRole
 
 export default function MobileBottomBar() {
   const pathname = usePathname();
-  const { user } = useAuth(); // ✅ 2. Get the current authenticated user
+  const { user } = useAuth();
 
-  // ✅ 3. Filter links based on role BEFORE slicing to get the top 5 visible links.
+  // ✅ 2. Updated filter logic to handle both roles and verification status
   const bottomNavLinks = mainNavLinks
     .filter((link) => {
-      return !link.roles || (user && link.roles.includes(user.systemRole));
+      const hasRolePermission =
+        !link.roles || (user && link.roles.includes(user.systemRole));
+      const hasVerificationPermission =
+        !link.requiresVerification ||
+        (user &&
+          (user.isVerifiedCreator || user.systemRole !== SystemRole.USER));
+      return hasRolePermission && hasVerificationPermission;
     })
     .slice(0, 5);
 

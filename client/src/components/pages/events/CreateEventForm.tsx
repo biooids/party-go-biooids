@@ -113,7 +113,7 @@ export default function CreateEventForm() {
     toast.promise(createEvent(formData).unwrap(), {
       loading: "Submitting your event for approval...",
       success: (newEvent) => {
-        router.push(`/events/${newEvent._id}`);
+        router.push(`/events/${newEvent.data.event._id}`);
         return "Event submitted successfully! It is now pending approval.";
       },
       error: (err) => err.data?.message || "Failed to create event.",
