@@ -1,4 +1,3 @@
-//src/components/pages/settings/VerificationSection.tsx
 "use client";
 
 import { useState } from "react";
@@ -16,7 +15,7 @@ import {
 import { CheckCircle2, Hourglass, HelpCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { VerificationStatus } from "@/lib/features/verificationRequest/verificationRequestTypes";
-import { SystemRole } from "@/lib/features/auth/authTypes"; // ✅ 1. Import SystemRole
+import { SystemRole } from "@/lib/features/auth/authTypes";
 
 export default function VerificationSection({ user }: { user: UserProfile }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -24,8 +23,6 @@ export default function VerificationSection({ user }: { user: UserProfile }) {
   const { data: requestData, isLoading } = useGetMyVerificationRequestQuery();
   const requestStatus = requestData?.data.request?.status;
 
-  // ✅ 2. Create a comprehensive check for verification status.
-  // A user is effectively verified if they have the flag OR are an admin.
   const isEffectivelyVerified =
     user.isVerifiedCreator ||
     user.systemRole === SystemRole.ADMIN ||
@@ -72,18 +69,30 @@ export default function VerificationSection({ user }: { user: UserProfile }) {
   // Case 3: The user's request was rejected.
   if (requestStatus === VerificationStatus.REJECTED) {
     return (
-      <Card className="border-destructive">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <HelpCircle className="h-5 w-5 text-destructive" />
-            <CardTitle>Request Not Approved</CardTitle>
-          </div>
-          <CardDescription>
-            Unfortunately, your previous application was not approved. Please
-            contact support if you believe this is an error.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <>
+        <Card className="border-destructive">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <HelpCircle className="h-5 w-5 text-destructive" />
+              <CardTitle>Request Not Approved</CardTitle>
+            </div>
+            <CardDescription>
+              Unfortunately, your previous application was not approved. You may
+              re-apply if you wish.
+            </CardDescription>
+          </CardHeader>
+          {/* ✅ ADDED: The "Re-apply" button for rejected users */}
+          <CardContent>
+            <Button variant="secondary" onClick={() => setIsDialogOpen(true)}>
+              Submit New Application
+            </Button>
+          </CardContent>
+        </Card>
+        <RequestVerificationDialog
+          isOpen={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+        />
+      </>
     );
   }
 

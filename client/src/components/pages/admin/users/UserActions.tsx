@@ -9,6 +9,7 @@ import {
   useDeleteUserMutation,
   useUnbanUserMutation,
   useUpdateUserRoleMutation,
+  useRevokeCreatorStatusMutation, // ✅ 1. Import the new hook
 } from "@/lib/features/admin/adminApiSlice";
 import { toast } from "sonner";
 import {
@@ -17,6 +18,7 @@ import {
   UserCog,
   ShieldOff,
   VenetianMask,
+  UserX, // ✅ 2. Import a new icon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,22 +40,23 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import BanUserDialog from "./BanUserDialog";
-import { useAuth } from "@/lib/hooks/useAuth"; // ✅ 1. Import useAuth to know who the actor is
+import { useAuth } from "@/lib/hooks/useAuth";
 
 export default function UserActions({ user }: { user: AdminUserView }) {
-  const { user: actor } = useAuth(); // ✅ 2. Get the currently logged-in admin (the "actor")
+  const { user: actor } = useAuth();
   const [isBanDialogOpen, setIsBanDialogOpen] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+  const [isRevokeAlertOpen, setIsRevokeAlertOpen] = useState(false); // ✅ 3. Add state for the new dialog
 
   const [updateUserRole] = useUpdateUserRoleMutation();
   const [unbanUser] = useUnbanUserMutation();
   const [deleteUser] = useDeleteUserMutation();
+  const [revokeCreatorStatus] = useRevokeCreatorStatusMutation(); // ✅ 4. Initialize the new hook
 
-  // ✅ 3. Determine if actions are allowed based on the new security rules
   const canPerformActions =
-    actor && // Actor must exist
-    user.systemRole !== SystemRole.SUPER_ADMIN && // Target cannot be a Super Admin
-    actor._id !== user._id; // Actor cannot target themselves
+    actor &&
+    user.systemRole !== SystemRole.SUPER_ADMIN &&
+    actor._id !== user._id;
 
   const handleRoleChange = (systemRole: SystemRole) => {
     toast.promise(
@@ -83,6 +86,16 @@ export default function UserActions({ user }: { user: AdminUserView }) {
     setIsDeleteAlertOpen(false);
   };
 
+  // ✅ 5. Add a handler for the revoke action
+  const handleRevoke = () => {
+    toast.promise(revokeCreatorStatus(user._id).unwrap(), {
+      loading: "Revoking creator status...",
+      success: "Creator status has been revoked.",
+      error: "Failed to revoke status.",
+    });
+    setIsRevokeAlertOpen(false);
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -94,8 +107,7 @@ export default function UserActions({ user }: { user: AdminUserView }) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-
-          {/* ✅ 4. Conditionally render actions based on the permission check */}
+          <DropdownMenuSeparator />
           {canPerformActions ? (
             <>
               {user.isBanned ? (
@@ -109,6 +121,15 @@ export default function UserActions({ user }: { user: AdminUserView }) {
                   Ban User
                 </DropdownMenuItem>
               )}
+
+              {/* ✅ 6. Conditionally render the revoke/verify actions */}
+              {user.isVerifiedCreator && (
+                <DropdownMenuItem onClick={() => setIsRevokeAlertOpen(true)}>
+                  <UserX className="mr-2 h-4 w-4" />
+                  Revoke Creator Status
+                </DropdownMenuItem>
+              )}
+
               <DropdownMenuSeparator />
               {user.systemRole !== SystemRole.ADMIN ? (
                 <DropdownMenuItem
@@ -162,6 +183,25 @@ export default function UserActions({ user }: { user: AdminUserView }) {
               className="bg-destructive hover:bg-destructive/90"
             >
               Permanently Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ✅ 7. Add the new confirmation dialog for revoking status */}
+      <AlertDialog open={isRevokeAlertOpen} onOpenChange={setIsRevokeAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revoke Creator Status?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the user's ability to create new events. They
+              will have to apply for verification again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRevoke}>
+              Confirm
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

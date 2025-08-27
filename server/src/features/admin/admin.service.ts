@@ -257,6 +257,36 @@ export class AdminService {
     );
     return request.toObject();
   }
+
+  /**
+   * (Admin) Revokes a user's verified creator status.
+   */
+  async revokeCreatorStatus(
+    targetUserId: string,
+    actor: { id: string; systemRole: SystemRole }
+  ) {
+    const targetUser = await User.findById(targetUserId);
+    if (!targetUser) {
+      throw createHttpError(404, "User not found.");
+    }
+
+    // Security check to prevent revoking Super Admins or self
+    if (targetUser._id.toString() === actor.id) {
+      throw createHttpError(400, "You cannot revoke your own creator status.");
+    }
+    if (targetUser.systemRole === SystemRole.SUPER_ADMIN) {
+      throw createHttpError(403, "A Super Admin's status cannot be modified.");
+    }
+
+    targetUser.isVerifiedCreator = false;
+    await targetUser.save();
+
+    logger.warn(
+      { targetUserId, actorId: actor.id },
+      "User's creator status has been revoked."
+    );
+    return targetUser.toObject();
+  }
 }
 
 export const adminService = new AdminService();

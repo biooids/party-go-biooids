@@ -1,21 +1,35 @@
 "use client";
 
+import { useEffect } from "react"; // ✅ 1. Import useEffect and useRouter
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useGetMeQuery } from "@/lib/features/user/userApiSlice";
 import CreateEventForm from "@/components/pages/events/CreateEventForm";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ShieldAlert } from "lucide-react";
-import { SystemRole } from "@/lib/features/auth/authTypes"; // ✅ 1. Import SystemRole
+import { SystemRole } from "@/lib/features/auth/authTypes";
 
 export default function CreateEventPage() {
-  const { user: authUser } = useAuth();
-  // We refetch the user data to get the latest creator status
-  const { data: userData, isLoading } = useGetMeQuery(undefined, {
+  const { user: authUser, token } = useAuth();
+  const router = useRouter(); // ✅ 2. Initialize the router
+  const {
+    data: userData,
+    isLoading,
+    isFetching,
+  } = useGetMeQuery(undefined, {
     skip: !authUser,
   });
 
-  if (isLoading || !authUser) {
+  // ✅ 3. Add the redirect logic for unauthenticated users
+  useEffect(() => {
+    // Check if loading is finished and there's still no token
+    if (!isFetching && !token) {
+      router.push("/auth/login");
+    }
+  }, [token, isFetching, router]);
+
+  if (isLoading || isFetching || !authUser) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-8 w-1/2" />
@@ -29,7 +43,6 @@ export default function CreateEventPage() {
     );
   }
 
-  // ✅ 2. Use the complete, correct permission check.
   const canCreateEvents =
     userData?.data.user &&
     (userData.data.user.isVerifiedCreator ||
@@ -51,7 +64,6 @@ export default function CreateEventPage() {
     );
   }
 
-  // If permitted, show the form
   return (
     <div className="space-y-4">
       <div className="space-y-1">

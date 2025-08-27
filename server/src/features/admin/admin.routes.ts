@@ -49,7 +49,13 @@ router.patch(
   requireAdmin,
   adminController.unbanUser
 );
-
+// PATCH /api/v1/admin/users/:userId/revoke-creator - Revoke creator status
+router.patch(
+  "/users/:userId/revoke-creator",
+  requireAuth,
+  requireAdmin,
+  adminController.revokeCreatorStatus
+);
 // --- User Management Routes (Super Admin Only) ---
 router.get(
   "/users",

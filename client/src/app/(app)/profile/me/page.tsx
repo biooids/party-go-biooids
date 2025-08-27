@@ -35,7 +35,7 @@ export default function MyProfilePage() {
   // This effect handles redirecting unauthenticated users
   useEffect(() => {
     if (!token && !isFetching) {
-      router.push("/login");
+      router.push("/auth/login");
     }
   }, [token, isFetching, router]);
 

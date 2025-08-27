@@ -125,6 +125,16 @@ class AdminController {
       });
     }
   );
+
+  revokeCreatorStatus = asyncHandler(async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    const actor = {
+      id: req.user!.id,
+      systemRole: req.user!.systemRole as SystemRole,
+    };
+    const updatedUser = await adminService.revokeCreatorStatus(userId, actor);
+    res.status(200).json({ status: "success", data: { user: updatedUser } });
+  });
 }
 
 export const adminController = new AdminController();

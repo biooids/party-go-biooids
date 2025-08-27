@@ -30,7 +30,7 @@ export default function MyEventDetailPage() {
   // Protect this route
   useEffect(() => {
     if (!token) {
-      router.push("/login");
+      router.push("/auth/login");
     }
   }, [token, router]);
 

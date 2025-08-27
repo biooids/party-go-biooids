@@ -108,6 +108,14 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ["PendingVerificationRequests"],
     }),
+
+    revokeCreatorStatus: builder.mutation<AdminUserView, string>({
+      query: (userId) => ({
+        url: `/admin/users/${userId}/revoke-creator`,
+        method: "PATCH",
+      }),
+      invalidatesTags: ["AdminUsers"],
+    }),
   }),
 });
 
@@ -123,4 +131,5 @@ export const {
   useGetPendingVerificationRequestsQuery,
   useApproveVerificationRequestMutation,
   useRejectVerificationRequestMutation,
+  useRevokeCreatorStatusMutation, // ✅ Export the new hook
 } = adminApiSlice;

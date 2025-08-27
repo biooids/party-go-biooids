@@ -14,7 +14,7 @@ export default function MyEventsPage() {
   // Protect this route by redirecting if the user is not logged in
   useEffect(() => {
     if (!token) {
-      router.push("/login");
+      router.push("/auth/login");
     }
   }, [token, router]);
 

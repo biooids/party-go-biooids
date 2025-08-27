@@ -13,10 +13,9 @@ export default function SettingsLayout({
   const { token } = useAuth();
   const router = useRouter();
 
-  // ✅ This layout now protects all child routes under /settings
   useEffect(() => {
     if (!token) {
-      router.push("/login");
+      router.push("/auth/login");
     }
   }, [token, router]);
 

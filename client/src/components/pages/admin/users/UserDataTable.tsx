@@ -29,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { AdminUserView } from "@/lib/features/admin/adminTypes";
 import UserActions from "./UserActions";
 import { format } from "date-fns";
+import { CheckCircle2 } from "lucide-react"; // ✅ Import new icon
 
 export const columns: ColumnDef<AdminUserView>[] = [
   {
@@ -54,9 +55,19 @@ export const columns: ColumnDef<AdminUserView>[] = [
     accessorKey: "isBanned",
     header: "Status",
     cell: ({ row }) => (
-      <Badge variant={row.original.isBanned ? "destructive" : "secondary"}>
-        {row.original.isBanned ? "Banned" : "Active"}
-      </Badge>
+      // ✅ ADDED: A flex container to show multiple badges
+      <div className="flex items-center gap-2">
+        <Badge variant={row.original.isBanned ? "destructive" : "secondary"}>
+          {row.original.isBanned ? "Banned" : "Active"}
+        </Badge>
+        {/* ✅ ADDED: A visual indicator for verified creators */}
+        {row.original.isVerifiedCreator && (
+          <Badge>
+            <CheckCircle2 className="h-3 w-3 mr-1" />
+            Creator
+          </Badge>
+        )}
+      </div>
     ),
   },
   {

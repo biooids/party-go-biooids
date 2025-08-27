@@ -1,28 +1,38 @@
-//src/components/providers/SessionManager.tsx
 "use client";
 
 import { useEffect, useRef } from "react";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useLazyRefreshQuery } from "@/lib/features/auth/authApiSlice";
+import { useRouter } from "next/navigation"; // ✅ 1. Import the router
 
 /**
- * A headless client component that proactively manages the user's session.
- * It automatically refreshes the access token when the browser tab
- * is refocused after a period of inactivity. This should be placed
- * once in the root layout.
+ * A headless client component that manages the user's session.
+ * - Proactively refreshes the access token on tab focus.
+ * - Automatically redirects the user to the homepage on logout.
+ * This should be placed once in the root layout.
  */
 export default function SessionManager() {
   const { token } = useAuth();
   const [triggerRefresh] = useLazyRefreshQuery();
+  const router = useRouter(); // ✅ 2. Initialize the router
   const lastRefreshTimestamp = useRef<number>(Date.now());
 
+  // ✅ 3. Add logic to watch for logout and redirect
+  const previousTokenRef = useRef(token);
+  useEffect(() => {
+    // If the token existed before but is null now, the user has logged out.
+    if (previousTokenRef.current && !token) {
+      router.push("/"); // Redirect to the homepage
+    }
+    // Update the ref for the next render.
+    previousTokenRef.current = token;
+  }, [token, router]);
+
+  // This effect handles the proactive token refresh
   useEffect(() => {
     const handleVisibilityChange = () => {
-      // Check if the tab is visible and a user is likely logged in
       if (document.visibilityState === "visible" && token) {
         const now = Date.now();
-        // Throttle the refresh to run at most once every 60 seconds
-        // to prevent excessive API calls.
         if (now - lastRefreshTimestamp.current > 60 * 1000) {
           console.log("Tab refocused, triggering a silent token refresh.");
           triggerRefresh();
@@ -31,15 +41,12 @@ export default function SessionManager() {
       }
     };
 
-    // Add the event listener when the component mounts
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    // Clean up the event listener when the component unmounts
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [token, triggerRefresh]);
 
-  // This component does not render anything to the screen.
   return null;
 }

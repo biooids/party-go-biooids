@@ -1,7 +1,10 @@
 // src/features/verificationRequest/verificationRequest.service.ts
 
 import VerificationRequest from "./verificationRequest.model.js";
-import { CreateVerificationRequestDto } from "./verificationRequest.types.js";
+import {
+  CreateVerificationRequestDto,
+  VerificationStatus,
+} from "./verificationRequest.types.js";
 import { User } from "../../db/mongo.js";
 import { createHttpError } from "../../utils/error.factory.js";
 import { logger } from "../../config/logger.js";
@@ -9,6 +12,7 @@ import { logger } from "../../config/logger.js";
 export class VerificationRequestService {
   /**
    * Creates a new verification request for a user.
+   * It will delete a previously rejected request to allow re-application.
    * @param input - The data for the request, containing the user's reason.
    * @param userId - The ID of the user making the request.
    */
@@ -19,23 +23,36 @@ export class VerificationRequestService {
       throw createHttpError(400, "You are already a verified creator.");
     }
 
-    // Check 2: See if the user already has a pending or approved request.
-    const existingRequest = await VerificationRequest.findOne({
-      userId,
-    }).lean();
+    // Check 2: See if the user has an existing request.
+    const existingRequest = await VerificationRequest.findOne({ userId });
     if (existingRequest) {
-      throw createHttpError(
-        409,
-        `You already have a request with '${existingRequest.status}' status.`
-      );
+      // If the request is PENDING or APPROVED, block the new one.
+      if (
+        existingRequest.status === VerificationStatus.PENDING ||
+        existingRequest.status === VerificationStatus.APPROVED
+      ) {
+        throw createHttpError(
+          409,
+          `You already have a request with '${existingRequest.status}' status.`
+        );
+      }
+
+      // ✅ ADDED: If the request was REJECTED, delete it to allow a new application.
+      if (existingRequest.status === VerificationStatus.REJECTED) {
+        await VerificationRequest.findByIdAndDelete(existingRequest._id);
+        logger.info(
+          { userId, requestId: existingRequest._id },
+          "Removed old rejected request to allow re-application."
+        );
+      }
     }
 
-    // If checks pass, create the new request with the new data.
+    // If checks pass, create the new request.
     const newRequest = await VerificationRequest.create({
       userId,
       reason: input.reason,
-      location: input.location, // ✅ ADDED
-      preferredCategories: input.preferredCategories, // ✅ ADDED
+      location: input.location,
+      preferredCategories: input.preferredCategories,
     });
 
     logger.info(
@@ -44,7 +61,6 @@ export class VerificationRequestService {
     );
     return newRequest.toObject();
   }
-
   /**
    * Finds a verification request by the user ID of the person who created it.
    * @param userId - The ID of the user.
