@@ -35,6 +35,10 @@ const userSchema = new Schema(
       enum: Object.values(SystemRole),
       default: SystemRole.USER,
     },
+    xp: {
+      type: Number,
+      default: 0,
+    },
     isVerifiedCreator: {
       type: Boolean,
       default: false,

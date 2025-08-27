@@ -25,6 +25,10 @@ export interface Event {
   status: EventStatus;
   isSaved?: boolean;
   commentCount?: number;
+  location: {
+    type: "Point";
+    coordinates: [number, number]; // [longitude, latitude]
+  };
 
   creatorId: {
     _id: string;

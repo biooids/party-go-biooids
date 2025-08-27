@@ -10,6 +10,8 @@ import {
 } from "../../config/cloudinary.js";
 import { logger } from "../../config/logger.js";
 import SavedEvent from "../savedEvent/savedEvent.model.js";
+import { mapService } from "../map/map.service.js";
+import crypto from "crypto";
 
 // Define what fields to return when populating creator info
 const creatorPopulation = {
@@ -38,29 +40,50 @@ export class EventService {
   /**
    * Creates a new event with a 'PENDING' status and multiple images.
    */
+  /**
+   * Creates a new event with a 'PENDING' status, multiple images, and geocoded location.
+   */
+  /**
+   * Creates a new event with a 'PENDING' status, multiple images, and a unique QR code secret.
+   */
   public async createEvent(
     input: CreateEventInputDto,
     creatorId: string,
     imageFiles: Express.Multer.File[]
   ) {
-    // ✅ Upload all images to Cloudinary in parallel for efficiency.
+    // 1. Geocode the address to get coordinates.
+    const geocodingResults = await mapService.geocodeAddress(input.address);
+    if (!geocodingResults || geocodingResults.length === 0) {
+      throw createHttpError(400, "Could not validate the provided address.");
+    }
+    const [longitude, latitude] = geocodingResults[0].center;
+    const location = {
+      type: "Point" as const,
+      coordinates: [longitude, latitude],
+    };
+
+    // 2. Upload images to Cloudinary.
     const uploadPromises = imageFiles.map((file) =>
       uploadToCloudinary(file.buffer, "event_images")
     );
     const uploadResults = await Promise.all(uploadPromises);
     const imageUrls = uploadResults.map((result) => result.secure_url);
 
+    const qrCodeSecret = crypto.randomBytes(16).toString("hex");
+
+    // 3. Create the event with all data.
     const eventData = {
       ...input,
       creatorId,
       imageUrls,
+      location,
+      qrCodeSecret, // ✅ Add the new secret to the event data
       status: EventStatus.PENDING,
     };
 
     const event = await Event.create(eventData);
     return event.toObject();
   }
-
   /**
    * Finds a single event by its ID, but only if it is approved.
    */
@@ -114,6 +137,9 @@ export class EventService {
    * Updates an event. Only the creator or an admin can perform this action.
    * If an approved event is edited, it is set back to pending for re-approval.
    */
+  /**
+   * Updates an event. If the address is changed, it re-geocodes the location.
+   */
   public async updateEvent(
     eventId: string,
     updateData: UpdateEventInputDto,
@@ -124,7 +150,6 @@ export class EventService {
       throw createHttpError(404, "Event not found.");
     }
 
-    // Permission check: Must be the creator or an admin.
     if (
       event.creatorId.toString() !== user.id &&
       user.systemRole !== SystemRole.ADMIN &&
@@ -136,6 +161,20 @@ export class EventService {
       );
     }
 
+    // ✅ ADDED: If the address is being updated, fetch new coordinates.
+    if (updateData.address && updateData.address !== event.address) {
+      const geocodingResults = await mapService.geocodeAddress(
+        updateData.address
+      );
+      if (geocodingResults && geocodingResults.length > 0) {
+        const [longitude, latitude] = geocodingResults[0].center;
+        event.location = {
+          type: "Point",
+          coordinates: [longitude, latitude],
+        };
+      }
+    }
+
     const wasApproved = event.status === EventStatus.APPROVED;
     const isCreatorEditing = event.creatorId.toString() === user.id;
 
@@ -143,15 +182,15 @@ export class EventService {
       event.status = EventStatus.PENDING;
       logger.info(
         { eventId, userId: user.id },
-        "Approved event was edited by creator and has been reset to PENDING status."
+        "Approved event was edited and reset to PENDING."
       );
     }
 
+    // Apply all other text-based updates
     Object.assign(event, updateData);
     await event.save();
     return event.toObject();
   }
-
   /**
    * Deletes an event and all its associated images from Cloudinary.
    */

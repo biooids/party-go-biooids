@@ -21,6 +21,7 @@ export const apiSlice = createApi({
     "VerificationRequest",
     "SavedEvents",
     "Comments",
+    "MapPlaces",
   ],
   endpoints: (builder) => ({}),
 });

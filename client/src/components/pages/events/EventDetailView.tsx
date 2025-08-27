@@ -1,3 +1,4 @@
+//src/components/pages/events/EventDetailView.tsx
 "use client";
 
 import { useState } from "react";
@@ -14,6 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import {
   Calendar,
   MapPin,
@@ -25,8 +27,9 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Separator } from "@/components/ui/separator";
 import EventComments from "./comments/EventComments";
+import Map from "@/components/pages/map/Map";
+import { Marker, ViewStateChangeEvent } from "react-map-gl";
 
 const getInitials = (name: string) => {
   const words = name.split(" ").filter(Boolean);
@@ -36,13 +39,15 @@ const getInitials = (name: string) => {
 };
 
 export default function EventDetailView({ event }: { event: Event }) {
-  // ✅ ADD THIS LOG: Check the browser console to inspect the 'event' object.
-  console.log("Event data received by component:", event);
-
   const { user } = useAuth();
   const [selectedImage, setSelectedImage] = useState(event.imageUrls?.[0]);
   const [isCopied, setIsCopied] = useState(false);
 
+  const [viewState, setViewState] = useState({
+    longitude: event.location.coordinates[0],
+    latitude: event.location.coordinates[1],
+    zoom: 14,
+  });
   const [saveEvent, { isLoading: isSaving }] = useSaveEventMutation();
   const [unsaveEvent, { isLoading: isUnsaving }] = useUnsaveEventMutation();
 
@@ -166,6 +171,23 @@ export default function EventDetailView({ event }: { event: Event }) {
         </div>
 
         <div className="space-y-4">
+          {/* ✅ 2. ADDED: Interactive map display */}
+          <div className="h-48 w-full rounded-lg overflow-hidden border">
+            <Map
+              viewState={viewState}
+              onMove={(evt: ViewStateChangeEvent) =>
+                setViewState(evt.viewState)
+              }
+            >
+              <Marker
+                longitude={event.location.coordinates[0]}
+                latitude={event.location.coordinates[1]}
+              >
+                <MapPin className="h-6 w-6 text-red-500" />
+              </Marker>
+            </Map>
+          </div>
+
           <Card>
             <CardContent className="p-4 space-y-3">
               <div className="flex items-start gap-3">

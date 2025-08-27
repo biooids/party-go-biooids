@@ -6,12 +6,23 @@ import Image from "next/image";
 import { Event, EventStatus } from "@/lib/features/event/eventTypes";
 import { useResubmitEventMutation } from "@/lib/features/event/eventApiSlice";
 import { toast } from "sonner";
+
+// UI Components
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+
+// Icons and Utils
 import { Calendar, MapPin, Edit, Ticket, Send, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+
+// Child Components
 import EditEventDialog from "./EditEventDialog";
+import Map from "@/components/pages/map/Map";
+import { Marker, ViewStateChangeEvent } from "react-map-gl";
+import EventComments from "@/components/pages/events/comments/EventComments";
 
 const getStatusInfo = (status: EventStatus) => {
   switch (status) {
@@ -33,6 +44,12 @@ export default function MyEventDetailView({ event }: { event: Event }) {
     useResubmitEventMutation();
   const statusInfo = getStatusInfo(event.status);
 
+  const [viewState, setViewState] = useState({
+    longitude: event.location.coordinates[0],
+    latitude: event.location.coordinates[1],
+    zoom: 14,
+  });
+
   const handleResubmit = () => {
     toast.promise(resubmitEvent(event._id).unwrap(), {
       loading: "Resubmitting for approval...",
@@ -43,14 +60,9 @@ export default function MyEventDetailView({ event }: { event: Event }) {
 
   return (
     <>
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto max-w-4xl space-y-8">
         {/* Status Banner */}
-        <div
-          className={cn(
-            "p-4 rounded-lg mb-4 text-center",
-            statusInfo.className
-          )}
-        >
+        <div className={cn("p-4 rounded-lg text-center", statusInfo.className)}>
           <h2 className="font-bold text-lg">Status: {statusInfo.text}</h2>
         </div>
 
@@ -102,7 +114,6 @@ export default function MyEventDetailView({ event }: { event: Event }) {
               </h1>
               <p className="text-muted-foreground">{event.description}</p>
             </div>
-            {/* Creator actions are grouped together */}
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -124,6 +135,23 @@ export default function MyEventDetailView({ event }: { event: Event }) {
             </div>
           </div>
           <div className="space-y-4">
+            {/* ✅ ADDED: Interactive map display */}
+            <div className="h-48 w-full rounded-lg overflow-hidden border">
+              <Map
+                viewState={viewState}
+                onMove={(evt: ViewStateChangeEvent) =>
+                  setViewState(evt.viewState)
+                }
+              >
+                <Marker
+                  longitude={event.location.coordinates[0]}
+                  latitude={event.location.coordinates[1]}
+                >
+                  <MapPin className="h-6 w-6 text-red-500" />
+                </Marker>
+              </Map>
+            </div>
+            {/* ✅ ADDED: Full information card */}
             <Card>
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-start gap-3">
@@ -156,9 +184,23 @@ export default function MyEventDetailView({ event }: { event: Event }) {
                     </p>
                   </div>
                 </div>
+                <div className="pt-2">
+                  <Badge variant="secondary">{event.categoryId.name}</Badge>
+                </div>
               </CardContent>
             </Card>
           </div>
+        </div>
+
+        {/* ✅ ADDED: Comments section */}
+        <Separator />
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight mb-4">
+            Comments{" "}
+            {typeof event.commentCount === "number" &&
+              `(${event.commentCount})`}
+          </h2>
+          <EventComments eventId={event._id} />
         </div>
       </div>
       <EditEventDialog

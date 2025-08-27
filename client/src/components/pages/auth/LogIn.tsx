@@ -49,14 +49,22 @@ const LoginForm = () => {
   const onSubmit: SubmitHandler<LoginFormValues> = async (data) => {
     setFormError(null);
     try {
-      // Use the login mutation from our API slice.
       await login(data).unwrap();
       // On success, RTK Query's onQueryStarted handles setting credentials.
-      // We can now navigate the user to the home page.
       router.push("/");
     } catch (err: any) {
-      // Extract the error message from the RTK Query error response.
-      const errorMessage = err.data?.message || "An unexpected error occurred.";
+      // ✅ FIXED: This logic now checks for both JSON and plain text errors.
+      let errorMessage = "An unexpected error occurred.";
+
+      // Check for our standard JSON error format
+      if (typeof err.data?.message === "string") {
+        errorMessage = err.data.message;
+      }
+      // Check for the rate limiter's plain text error format
+      else if (typeof err.data === "string") {
+        errorMessage = err.data;
+      }
+
       setFormError(errorMessage);
     }
   };

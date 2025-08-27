@@ -49,6 +49,11 @@ const eventSchema = new Schema(
       type: Number,
       default: 0,
     },
+    qrCodeSecret: {
+      type: String,
+      required: true,
+      unique: true,
+    },
   },
   { timestamps: true }
 );

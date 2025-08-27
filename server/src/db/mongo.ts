@@ -1,10 +1,7 @@
-// src/db/mongo.ts
-
 import mongoose from "mongoose";
 import { config } from "../config/index.js";
 import { logger } from "../config/logger.js";
 
-// ✅ ADDED: Event listeners for robust connection handling
 mongoose.connection.on("connected", () => {
   logger.info("✅ Mongoose connected successfully to MongoDB.");
 });
@@ -17,13 +14,20 @@ mongoose.connection.on("disconnected", () => {
   logger.warn("🔌 Mongoose disconnected.");
 });
 
-// Export your Mongoose models from a single point for easy access
+// These two models are in the local 'models' folder
 export { default as User } from "./models/user.model.js";
 export { default as RefreshToken } from "./models/refreshToken.model.js";
 
+// ✅ FIXED: These models are now correctly imported from their respective feature folders.
+export { default as Event } from "../features/event/event.model.js";
+export { default as EventCategory } from "../features/eventCategory/eventCategory.model.js";
+export { default as Comment } from "../features/comment/comment.model.js";
+export { default as CheckIn } from "../features/checkIn/checkIn.model.js";
+export { default as SavedEvent } from "../features/savedEvent/savedEvent.model.js";
+export { default as VerificationRequest } from "../features/verificationRequest/verificationRequest.model.js";
+
 const connectDB = async () => {
   try {
-    // The connection attempt is made here. The listeners above will handle the outcome.
     await mongoose.connect(config.databaseUrl);
   } catch (err) {
     logger.fatal({ err }, "❌ Initial Mongoose connection failed!");
