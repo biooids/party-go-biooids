@@ -26,6 +26,7 @@ const envSchema = z.object({
   CLOUDINARY_API_SECRET: z
     .string()
     .min(1, "CLOUDINARY_API_SECRET is required."),
+  MAPBOX_API_KEY: z.string().min(1, "MAPBOX_API_KEY is required."),
 });
 
 /**
@@ -51,6 +52,9 @@ function createConfig() {
         cloudName: parsedEnv.CLOUDINARY_CLOUD_NAME,
         apiKey: parsedEnv.CLOUDINARY_API_KEY,
         apiSecret: parsedEnv.CLOUDINARY_API_SECRET,
+      },
+      mapbox: {
+        apiKey: parsedEnv.MAPBOX_API_KEY,
       },
       cookies: {
         refreshTokenName: "jid",

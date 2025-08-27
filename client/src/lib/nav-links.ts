@@ -10,6 +10,7 @@ import {
   ClipboardList,
   Bookmark, // ✅ 1. Import a new icon
   type LucideIcon,
+  Map,
 } from "lucide-react";
 import { SystemRole } from "@/lib/features/auth/authTypes";
 
@@ -55,6 +56,11 @@ export const mainNavLinks: NavLink[] = [
     label: "Admin",
     icon: ShieldCheck,
     roles: [SystemRole.ADMIN, SystemRole.SUPER_ADMIN],
+  },
+  {
+    href: "/map",
+    label: "map",
+    icon: Map,
   },
 ];
 

@@ -10,6 +10,7 @@ import adminRoutes from "../features/admin/admin.routes.js";
 import verificationRequestRoutes from "../features/verificationRequest/verificationRequest.routes.js";
 import { savedEventRoutes } from "../features/savedEvent/savedEvent.routes.js";
 import { commentRoutes } from "../features/comment/comment.routes.js";
+import mapRoutes from "../features/map/map.routes.js";
 
 const router: Router = Router();
 
@@ -30,5 +31,6 @@ router.use("/admin", adminRoutes);
 router.use("/verification-requests", verificationRequestRoutes);
 router.use("/saved-events", savedEventRoutes);
 router.use("/comments", commentRoutes);
+router.use("/maps", mapRoutes);
 
 export default router;
