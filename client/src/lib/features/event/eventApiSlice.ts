@@ -69,16 +69,12 @@ export const eventApiSlice = apiSlice.injectEndpoints({
     /**
      * Updates an existing event.
      */
-    updateEvent: builder.mutation<
-      Event,
-      { eventId: string; body: UpdateEventDto }
-    >({
+    updateEvent: builder.mutation<Event, { eventId: string; body: FormData }>({
       query: ({ eventId, body }) => ({
         url: `/events/${eventId}`,
         method: "PATCH",
         body,
       }),
-      // After updating, invalidate both the public list and the user's list.
       invalidatesTags: (result, error, { eventId }) => [
         { type: "Events", id: "LIST" },
         { type: "Events", id: "MY_LIST" },

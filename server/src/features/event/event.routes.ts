@@ -42,10 +42,10 @@ router.post(
 router.patch(
   "/:eventId",
   requireAuth,
+  uploadImage.array("newImages", 5), // Handles up to 5 new images
   validate(updateEventSchema),
   eventController.update
 );
-
 // DELETE /api/v1/events/:eventId - Delete an event
 router.delete("/:eventId", requireAuth, eventController.remove);
 

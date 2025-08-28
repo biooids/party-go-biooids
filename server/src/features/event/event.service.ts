@@ -1,7 +1,7 @@
 // src/features/event/event.service.ts
 
 import Event, { EventStatus } from "./event.model.js";
-import { CreateEventInputDto, UpdateEventInputDto } from "./event.types.js";
+import { CreateEventInputDto } from "./event.types.js";
 import { createHttpError } from "../../utils/error.factory.js";
 import { SystemRole } from "../../types/user.types.js";
 import {
@@ -133,17 +133,12 @@ export class EventService {
   /**
    * Updates an event. Only the creator or an admin can perform this action.
    */
-  /**
-   * Updates an event. Only the creator or an admin can perform this action.
-   * If an approved event is edited, it is set back to pending for re-approval.
-   */
-  /**
-   * Updates an event. If the address is changed, it re-geocodes the location.
-   */
+
   public async updateEvent(
     eventId: string,
-    updateData: UpdateEventInputDto,
-    user: { id: string; systemRole: SystemRole }
+    updateData: any, // The body from FormData will have mixed types
+    user: { id: string; systemRole: SystemRole },
+    newImageFiles: Express.Multer.File[]
   ) {
     const event = await Event.findById(eventId);
     if (!event) {
@@ -161,16 +156,48 @@ export class EventService {
       );
     }
 
-    // ✅ ADDED: If the address is being updated, fetch new coordinates.
+    // --- Handle Image Updates ---
+    const existingImageUrls = JSON.parse(updateData.existingImageUrls || "[]");
+    let newUploadedUrls: string[] = [];
+
+    if (newImageFiles && newImageFiles.length > 0) {
+      const uploadPromises = newImageFiles.map((file) =>
+        uploadToCloudinary(file.buffer, "event_images")
+      );
+      const uploadResults = await Promise.all(uploadPromises);
+      newUploadedUrls = uploadResults.map((result) => result.secure_url);
+    }
+
+    const finalImageUrls = [...existingImageUrls, ...newUploadedUrls];
+
+    // ✅ ADDED: Critical validation to ensure at least one image remains.
+    if (finalImageUrls.length === 0) {
+      throw createHttpError(400, "An event must have at least one image.");
+    }
+
+    const imagesToDelete = event.imageUrls.filter(
+      (url) => !existingImageUrls.includes(url)
+    );
+
+    if (imagesToDelete.length > 0) {
+      const deletionPromises = imagesToDelete.map((url) => {
+        const publicId = getPublicIdFromUrl(url);
+        return publicId ? deleteFromCloudinary(publicId) : Promise.resolve();
+      });
+      await Promise.allSettled(deletionPromises);
+    }
+
+    event.imageUrls = finalImageUrls;
+
+    // --- Handle Text and Location Updates ---
     if (updateData.address && updateData.address !== event.address) {
       const geocodingResults = await mapService.geocodeAddress(
         updateData.address
       );
       if (geocodingResults && geocodingResults.length > 0) {
-        const [longitude, latitude] = geocodingResults[0].center;
         event.location = {
           type: "Point",
-          coordinates: [longitude, latitude],
+          coordinates: geocodingResults[0].center,
         };
       }
     }
@@ -186,8 +213,12 @@ export class EventService {
       );
     }
 
-    // Apply all other text-based updates
-    Object.assign(event, updateData);
+    if (updateData.name) event.name = updateData.name;
+    if (updateData.description) event.description = updateData.description;
+    if (updateData.date) event.date = new Date(updateData.date);
+    if (updateData.price) event.price = Number(updateData.price);
+    if (updateData.categoryId) event.categoryId = updateData.categoryId;
+
     await event.save();
     return event.toObject();
   }
@@ -238,8 +269,13 @@ export class EventService {
    * Finds all events created by a specific user, with pagination.
    * @param creatorId - The ID of the user who created the events.
    */
+  /**
+   * Finds all events created by a specific user, with pagination.
+   * @param creatorId - The ID of the user who created the events.
+   */
   public async findEventsByCreator(creatorId: string, page = 1, limit = 10) {
     const events = await Event.find({ creatorId })
+      .populate(creatorPopulation)
       .populate("categoryId", "name")
       .sort({ createdAt: -1 }) // Show newest first
       .skip((page - 1) * limit)

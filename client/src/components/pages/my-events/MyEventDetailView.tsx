@@ -1,8 +1,8 @@
-//src/components/pages/my-events/MyEventDetailView.tsx
 "use client";
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link"; // ✅ 1. Import Link
 import { Event, EventStatus } from "@/lib/features/event/eventTypes";
 import { useResubmitEventMutation } from "@/lib/features/event/eventApiSlice";
 import { toast } from "sonner";
@@ -19,7 +19,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
 // Child Components
-import EditEventDialog from "./EditEventDialog";
+// ✅ 2. REMOVED: The EditEventDialog import is no longer needed.
 import Map from "@/components/pages/map/Map";
 import { Marker, ViewStateChangeEvent } from "react-map-gl";
 import EventComments from "@/components/pages/events/comments/EventComments";
@@ -40,7 +40,7 @@ const getStatusInfo = (status: EventStatus) => {
 
 export default function MyEventDetailView({ event }: { event: Event }) {
   const [selectedImage, setSelectedImage] = useState(event.imageUrls?.[0]);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  // ✅ 3. REMOVED: The state for the edit dialog is no longer needed.
   const [resubmitEvent, { isLoading: isResubmitting }] =
     useResubmitEventMutation();
   const statusInfo = getStatusInfo(event.status);
@@ -62,12 +62,10 @@ export default function MyEventDetailView({ event }: { event: Event }) {
   return (
     <>
       <div className="mx-auto max-w-4xl space-y-8">
-        {/* Status Banner */}
         <div className={cn("p-4 rounded-lg text-center", statusInfo.className)}>
           <h2 className="font-bold text-lg">Status: {statusInfo.text}</h2>
         </div>
 
-        {/* Image Gallery */}
         <div className="space-y-2">
           <div className="relative h-48 sm:h-64 md:h-96 w-full overflow-hidden rounded-lg bg-muted">
             {selectedImage && (
@@ -106,7 +104,6 @@ export default function MyEventDetailView({ event }: { event: Event }) {
           )}
         </div>
 
-        {/* Main Content */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-2 space-y-4">
             <div className="space-y-2">
@@ -116,12 +113,12 @@ export default function MyEventDetailView({ event }: { event: Event }) {
               <p className="text-muted-foreground">{event.description}</p>
             </div>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setIsEditDialogOpen(true)}
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Details
+              {/* ✅ 4. FIXED: The "Edit" button is now a Link that navigates to the dedicated edit page. */}
+              <Button variant="outline" asChild>
+                <Link href={`/my-events/${event._id}/edit`}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit Details
+                </Link>
               </Button>
               {event.status === EventStatus.REJECTED && (
                 <Button onClick={handleResubmit} disabled={isResubmitting}>
@@ -136,7 +133,6 @@ export default function MyEventDetailView({ event }: { event: Event }) {
             </div>
           </div>
           <div className="space-y-4">
-            {/* ✅ ADDED: Interactive map display */}
             <div className="h-48 w-full rounded-lg overflow-hidden border">
               <Map
                 viewState={viewState}
@@ -152,7 +148,6 @@ export default function MyEventDetailView({ event }: { event: Event }) {
                 </Marker>
               </Map>
             </div>
-            {/* ✅ ADDED: Full information card */}
             <Card>
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-start gap-3">
@@ -205,7 +200,6 @@ export default function MyEventDetailView({ event }: { event: Event }) {
           </>
         )}
 
-        {/* ✅ ADDED: Comments section */}
         <Separator />
         <div>
           <h2 className="text-2xl font-bold tracking-tight mb-4">
@@ -216,11 +210,7 @@ export default function MyEventDetailView({ event }: { event: Event }) {
           <EventComments eventId={event._id} />
         </div>
       </div>
-      <EditEventDialog
-        eventId={event._id}
-        isOpen={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
-      />
+      {/* ✅ 5. REMOVED: The EditEventDialog component is no longer rendered here. */}
     </>
   );
 }

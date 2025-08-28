@@ -1,4 +1,3 @@
-//src/components/pages/my-events/MyEventCard.tsx
 "use client";
 
 import { useState } from "react";
@@ -7,9 +6,11 @@ import Link from "next/link";
 import { Event, EventStatus } from "@/lib/features/event/eventTypes";
 import {
   useDeleteEventMutation,
-  useResubmitEventMutation, // ✅ 1. Import the new resubmit hook
+  useResubmitEventMutation,
 } from "@/lib/features/event/eventApiSlice";
 import { toast } from "sonner";
+
+// UI Components
 import {
   Card,
   CardContent,
@@ -30,15 +31,27 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, ImageIcon, Send, Eye, Loader2 } from "lucide-react"; // ✅ 2. Import new icons
-import EditEventDialog from "./EditEventDialog";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+
+// Icons and Utils
+import { Edit, Trash2, ImageIcon, Send, Eye, Loader2 } from "lucide-react";
+// ✅ 1. REMOVED: The EditEventDialog import is no longer needed.
+
+const getInitials = (name?: string) => {
+  if (!name) return "?";
+  const words = name.split(" ").filter(Boolean);
+  if (words.length === 0) return "?";
+  if (words.length === 1) return words[0][0].toUpperCase();
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+};
 
 export default function MyEventCard({ event }: { event: Event }) {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  // ✅ 2. REMOVED: The state for the edit dialog is no longer needed.
+  // const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deleteEvent] = useDeleteEventMutation();
   const [resubmitEvent, { isLoading: isResubmitting }] =
-    useResubmitEventMutation(); // ✅ 3. Initialize the new mutation hook
+    useResubmitEventMutation();
 
   const getStatusVariant = (status: EventStatus) => {
     switch (status) {
@@ -62,7 +75,6 @@ export default function MyEventCard({ event }: { event: Event }) {
     setIsAlertOpen(false);
   };
 
-  // ✅ 4. Add a handler for the new resubmit action
   const handleResubmit = () => {
     toast.promise(resubmitEvent(event._id).unwrap(), {
       loading: "Resubmitting for approval...",
@@ -75,44 +87,61 @@ export default function MyEventCard({ event }: { event: Event }) {
 
   return (
     <>
-      {/* ✅ 5. NEW DESIGN: A cleaner, more organized card structure. */}
-      <Card>
-        <div className="flex flex-col sm:flex-row">
-          <div className="relative h-48 sm:h-auto sm:w-48 shrink-0 bg-muted">
-            {primaryImageUrl ? (
-              <Image
-                src={primaryImageUrl}
-                alt={event.name}
-                fill
-                className="object-cover rounded-t-lg sm:rounded-l-lg sm:rounded-r-none"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center">
-                <ImageIcon className="h-12 w-12 text-muted-foreground/30" />
+      <Card className="flex flex-col">
+        <div className="flex flex-col sm:flex-row flex-1">
+          <Link
+            href={`/my-events/${event._id}`}
+            className="flex flex-col sm:flex-row flex-1 group"
+          >
+            <div className="relative h-48 sm:h-auto sm:w-48 shrink-0 bg-muted">
+              {primaryImageUrl ? (
+                <Image
+                  src={primaryImageUrl}
+                  alt={event.name}
+                  fill
+                  className="object-cover rounded-t-lg sm:rounded-l-lg sm:rounded-r-none"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center">
+                  <ImageIcon className="h-12 w-12 text-muted-foreground/30" />
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col flex-1 p-4">
+              <CardHeader className="p-0">
+                <div className="flex justify-between items-start gap-2">
+                  <CardTitle className="text-lg group-hover:underline">
+                    {event.name}
+                  </CardTitle>
+                  <Badge
+                    variant={getStatusVariant(event.status)}
+                    className="capitalize shrink-0"
+                  >
+                    {event.status.toLowerCase()}
+                  </Badge>
+                </div>
+                <CardDescription>{event.address}</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0 pt-2 flex-1">
+                <p className="text-sm text-muted-foreground line-clamp-2">
+                  {event.description}
+                </p>
+              </CardContent>
+              <div className="flex items-center gap-2 pt-3">
+                <Avatar className="h-6 w-6">
+                  <AvatarImage src={event.creatorId.profileImage ?? ""} />
+                  <AvatarFallback>
+                    {getInitials(event.creatorId.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-xs text-muted-foreground">
+                  Created by {event.creatorId.name}
+                </span>
               </div>
-            )}
-          </div>
-          <div className="flex flex-col flex-1 p-4">
-            <CardHeader className="p-0">
-              <div className="flex justify-between items-start gap-2">
-                <CardTitle className="text-lg">{event.name}</CardTitle>
-                <Badge
-                  variant={getStatusVariant(event.status)}
-                  className="capitalize shrink-0"
-                >
-                  {event.status.toLowerCase()}
-                </Badge>
-              </div>
-              <CardDescription>{event.address}</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0 pt-2 flex-1">
-              <p className="text-sm text-muted-foreground line-clamp-2">
-                {event.description}
-              </p>
-            </CardContent>
-          </div>
+            </div>
+          </Link>
         </div>
-        {/* ✅ 6. NEW FOOTER: Action buttons are now grouped in the footer with conditional logic. */}
+
         <CardFooter className="bg-muted/50 p-3 flex justify-end gap-2">
           <Button variant="outline" size="sm" asChild>
             <Link href={`/my-events/${event._id}`}>
@@ -121,7 +150,6 @@ export default function MyEventCard({ event }: { event: Event }) {
             </Link>
           </Button>
 
-          {/* If event is rejected, show a "Resubmit" button */}
           {event.status === EventStatus.REJECTED && (
             <Button
               size="sm"
@@ -137,13 +165,13 @@ export default function MyEventCard({ event }: { event: Event }) {
             </Button>
           )}
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsEditDialogOpen(true)}
-          >
-            <Edit className="mr-2 h-4 w-4" /> Edit
+          {/* ✅ 3. FIXED: The "Edit" button is now a Link that navigates to the dedicated edit page. */}
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/my-events/${event._id}/edit`}>
+              <Edit className="mr-2 h-4 w-4" /> Edit
+            </Link>
           </Button>
+
           <Button
             variant="destructive"
             size="sm"
@@ -154,11 +182,7 @@ export default function MyEventCard({ event }: { event: Event }) {
         </CardFooter>
       </Card>
 
-      <EditEventDialog
-        eventId={event._id}
-        isOpen={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
-      />
+      {/* ✅ 4. REMOVED: The EditEventDialog component is no longer rendered here. */}
 
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
         <AlertDialogContent>

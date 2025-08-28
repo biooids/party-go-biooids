@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useForm, Controller, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Event, UpdateEventDto } from "@/lib/features/event/eventTypes";
@@ -17,6 +18,7 @@ import { useLazyGeocodeAddressQuery } from "@/lib/features/map/mapApiSlice";
 import { useDebounce } from "@/lib/hooks/useDebounce";
 import { MapPlaceFeature } from "@/lib/features/map/mapTypes";
 
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,20 +36,25 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Loader2, Calendar as CalendarIcon, MapPin } from "lucide-react";
+import {
+  Loader2,
+  Calendar as CalendarIcon,
+  MapPin,
+  X,
+  ImagePlus,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import Map from "@/components/pages/map/Map";
 import { Marker } from "react-map-gl";
 
+const MAX_IMAGES = 5;
+
 interface EditEventFormProps {
   event: Event;
-  onFinished: () => void;
 }
 
-export default function EditEventForm({
-  event,
-  onFinished,
-}: EditEventFormProps) {
+export default function EditEventForm({ event }: EditEventFormProps) {
+  const router = useRouter();
   const [updateEvent, { isLoading }] = useUpdateEventMutation();
   const { data: categoriesData } = useGetAllCategoriesQuery();
 
@@ -62,6 +69,11 @@ export default function EditEventForm({
     useLazyGeocodeAddressQuery();
   const [selectedLocation, setSelectedLocation] =
     useState<MapPlaceFeature | null>(null);
+
+  // ✅ ADDED: State to manage image updates
+  const [existingImages, setExistingImages] = useState(event.imageUrls);
+  const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
+  const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
 
   const {
     register,
@@ -99,243 +111,298 @@ export default function EditEventForm({
     setSearchQuery("");
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const newFiles = Array.from(files);
+    if (
+      existingImages.length + newImageFiles.length + newFiles.length >
+      MAX_IMAGES
+    ) {
+      toast.error(`You can only have a maximum of ${MAX_IMAGES} images.`);
+      return;
+    }
+
+    const newPreviews = newFiles.map((file) => URL.createObjectURL(file));
+    setNewImageFiles((prev) => [...prev, ...newFiles]);
+    setNewImagePreviews((prev) => [...prev, ...newPreviews]);
+  };
+
+  const handleRemoveExistingImage = (urlToRemove: string) => {
+    setExistingImages((prev) => prev.filter((url) => url !== urlToRemove));
+  };
+
+  const handleRemoveNewImage = (indexToRemove: number) => {
+    URL.revokeObjectURL(newImagePreviews[indexToRemove]);
+    setNewImageFiles((prev) =>
+      prev.filter((_, index) => index !== indexToRemove)
+    );
+    setNewImagePreviews((prev) =>
+      prev.filter((_, index) => index !== indexToRemove)
+    );
+  };
+
   const onSubmit: SubmitHandler<UpdateEventFormValues> = async (data) => {
-    const payload: Partial<UpdateEventDto> = {};
-    if (data.name) payload.name = data.name;
-    if (data.description) payload.description = data.description;
-    if (data.address) payload.address = data.address;
-    if (data.price !== undefined) payload.price = data.price;
-    if (data.categoryId) payload.categoryId = data.categoryId;
+    // NOTE: This requires a backend update to handle FormData for event updates.
+    const formData = new FormData();
+    // Append text fields that have values
+    if (data.name) formData.append("name", data.name);
+    if (data.description) formData.append("description", data.description);
+    if (data.address) formData.append("address", data.address);
+    if (data.price !== undefined)
+      formData.append("price", data.price.toString());
+    if (data.categoryId) formData.append("categoryId", data.categoryId);
 
     if (data.date && data.time) {
       const [hours, minutes] = data.time.split(":").map(Number);
       const combinedDate = new Date(data.date);
       combinedDate.setHours(hours, minutes);
-      payload.date = combinedDate.toISOString();
+      formData.append("date", combinedDate.toISOString());
     }
 
-    toast.promise(updateEvent({ eventId: event._id, body: payload }).unwrap(), {
-      loading: "Saving changes...",
-      success: "Event updated successfully!",
-      error: (err) => err.data?.message || "Failed to update event.",
+    // Append image data
+    formData.append("existingImageUrls", JSON.stringify(existingImages));
+    newImageFiles.forEach((file) => {
+      formData.append("newImages", file);
     });
-    onFinished();
+
+    toast.promise(
+      updateEvent({ eventId: event._id, body: formData }).unwrap(),
+      {
+        loading: "Saving changes...",
+        success: () => {
+          router.push(`/my-events/${event._id}`);
+          router.refresh();
+          return "Event updated successfully!";
+        },
+        error: (err) => err.data?.message || "Failed to update event.",
+      }
+    );
   };
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="py-4 grid grid-cols-1 md:grid-cols-2 gap-6"
-    >
-      {/* Left Side: Form Fields */}
-      <div className="space-y-4">
-        <div>
-          <Label htmlFor="name">Event Name</Label>
-          <Input id="name" {...register("name")} />
-          {errors.name && (
-            <p className="text-sm text-destructive mt-1">
-              {errors.name.message}
-            </p>
-          )}
-        </div>
-        <div>
-          <Label htmlFor="description">Description</Label>
-          <Textarea id="description" {...register("description")} />
-          {errors.description && (
-            <p className="text-sm text-destructive mt-1">
-              {errors.description.message}
-            </p>
-          )}
-        </div>
-
-        {/* ✅ ADDED: Interactive map search for the address */}
-        <div className="space-y-2">
-          <Label htmlFor="address">Address / Venue</Label>
-          <div className="relative">
-            <Input
-              id="address"
-              placeholder="Search for a new location..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              autoComplete="off"
-            />
-            {isGeocoding && (
-              <Loader2 className="absolute right-2 top-2 h-5 w-5 animate-spin text-muted-foreground" />
-            )}
-            {geocodeData && searchQuery && (
-              <div className="absolute z-20 top-full mt-1 w-full bg-background border rounded-md shadow-lg max-h-48 overflow-y-auto">
-                {geocodeData.data.features.map((location) => (
-                  <div
-                    key={location.id}
-                    className="p-2 hover:bg-muted cursor-pointer"
-                    onClick={() => handleLocationSelect(location)}
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <Card>
+        <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Left Side: Form Fields */}
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="name">Event Name</Label>
+              <Input id="name" {...register("name")} />
+              {errors.name && (
+                <p className="text-sm text-destructive mt-1">
+                  {errors.name.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Textarea id="description" {...register("description")} />
+              {errors.description && (
+                <p className="text-sm text-destructive mt-1">
+                  {errors.description.message}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="address">Address / Venue</Label>
+              <Input id="address" {...register("address")} />
+              {errors.address && (
+                <p className="text-sm text-destructive mt-1">
+                  {errors.address.message}
+                </p>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Date</Label>
+                <Controller
+                  name="date"
+                  control={control}
+                  render={({ field }) => (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {field.value ? (
+                            format(field.value, "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          autoFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                />
+                {errors.date && (
+                  <p className="text-sm text-destructive mt-1">
+                    {errors.date.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="time">Time</Label>
+                <Input id="time" type="time" {...register("time")} />
+                {errors.time && (
+                  <p className="text-sm text-destructive mt-1">
+                    {errors.time.message}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="price">Price ($)</Label>
+              <Input
+                id="price"
+                type="number"
+                step="0.01"
+                {...register("price", { valueAsNumber: true })}
+              />
+              {errors.price && (
+                <p className="text-sm text-destructive mt-1">
+                  {errors.price.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="categoryId">Category</Label>
+              <Controller
+                name="categoryId"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
                   >
-                    <p className="font-semibold text-sm">
-                      {location.properties.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {location.place_name}
-                    </p>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a category..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categoriesData?.data.categories.map((cat) => (
+                        <SelectItem key={cat._id} value={cat._id}>
+                          {cat.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.categoryId && (
+                <p className="text-sm text-destructive mt-1">
+                  {errors.categoryId.message}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Right Side: Map and Images */}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Location Preview</Label>
+              <div className="h-48 w-full rounded-lg overflow-hidden border">
+                <Map
+                  viewState={viewState}
+                  onMove={(evt) => setViewState(evt.viewState)}
+                >
+                  <Marker
+                    longitude={viewState.longitude}
+                    latitude={viewState.latitude}
+                  >
+                    <MapPin className="h-6 w-6 text-red-500" />
+                  </Marker>
+                </Map>
+              </div>
+            </div>
+            {/* ✅ ADDED: Full image management UI */}
+            <div className="space-y-2">
+              <Label>Event Images (up to {MAX_IMAGES})</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {existingImages.map((url) => (
+                  <div key={url} className="relative aspect-square">
+                    <Image
+                      src={url}
+                      alt="Existing event image"
+                      fill
+                      className="object-cover rounded-md"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-1 right-1 h-6 w-6"
+                      onClick={() => handleRemoveExistingImage(url)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
                 ))}
-              </div>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Current: {event.address}
-          </p>
-          {errors.address && (
-            <p className="text-sm text-destructive mt-1">
-              {errors.address.message}
-            </p>
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label>Date</Label>
-            <Controller
-              name="date"
-              control={control}
-              render={({ field }) => (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !field.value && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {field.value ? (
-                        format(field.value, "PPP")
-                      ) : (
-                        <span>Pick a date</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      autoFocus
+                {newImagePreviews.map((src, index) => (
+                  <div key={src} className="relative aspect-square">
+                    <Image
+                      src={src}
+                      alt={`New preview ${index + 1}`}
+                      fill
+                      className="object-cover rounded-md"
                     />
-                  </PopoverContent>
-                </Popover>
-              )}
-            />
-            {errors.date && (
-              <p className="text-sm text-destructive mt-1">
-                {errors.date.message}
-              </p>
-            )}
-          </div>
-          <div>
-            <Label htmlFor="time">Time</Label>
-            <Input id="time" type="time" {...register("time")} />
-            {errors.time && (
-              <p className="text-sm text-destructive mt-1">
-                {errors.time.message}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div>
-          <Label htmlFor="price">Price ($)</Label>
-          <Input
-            id="price"
-            type="number"
-            step="0.01"
-            placeholder="0.00 for free events"
-            {...register("price", { valueAsNumber: true })}
-          />
-          {errors.price && (
-            <p className="text-sm text-destructive mt-1">
-              {errors.price.message}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <Label htmlFor="categoryId">Category</Label>
-          <Controller
-            name="categoryId"
-            control={control}
-            render={({ field }) => (
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a category..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {categoriesData?.data.categories.map((cat) => (
-                    <SelectItem key={cat._id} value={cat._id}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-          {errors.categoryId && (
-            <p className="text-sm text-destructive mt-1">
-              {errors.categoryId.message}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Right Side: Map and Images */}
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label>Location Preview</Label>
-          <div className="h-64 w-full rounded-lg overflow-hidden border">
-            <Map
-              viewState={viewState}
-              onMove={(evt) => setViewState(evt.viewState)}
-            >
-              {selectedLocation && (
-                <Marker
-                  longitude={selectedLocation.center[0]}
-                  latitude={selectedLocation.center[1]}
-                >
-                  <MapPin className="h-6 w-6 text-red-500" />
-                </Marker>
-              )}
-            </Map>
-          </div>
-        </div>
-        <div className="space-y-2">
-          <Label>Current Images</Label>
-          <div className="grid grid-cols-5 gap-2">
-            {event.imageUrls.map((url) => (
-              <div key={url} className="relative aspect-square">
-                <Image
-                  src={url}
-                  alt="Event image"
-                  fill
-                  className="object-cover rounded-md"
-                />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-1 right-1 h-6 w-6"
+                      onClick={() => handleRemoveNewImage(index)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                {existingImages.length + newImageFiles.length < MAX_IMAGES && (
+                  <Label
+                    htmlFor="images"
+                    className="flex flex-col items-center justify-center aspect-square border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted"
+                  >
+                    <ImagePlus className="h-8 w-8 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground mt-1">
+                      Add Image
+                    </span>
+                  </Label>
+                )}
               </div>
-            ))}
+              <Input
+                id="images"
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageChange}
+                className="hidden"
+              />
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Image editing is not available in this version.
-          </p>
-        </div>
-      </div>
-
-      <div className="md:col-span-2 flex justify-end gap-2 pt-4">
-        <Button type="button" variant="ghost" onClick={onFinished}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={isLoading}>
-          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Save Changes
-        </Button>
-      </div>
+        </CardContent>
+        <CardFooter className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={() => router.back()}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isLoading}>
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save Changes
+          </Button>
+        </CardFooter>
+      </Card>
     </form>
   );
 }

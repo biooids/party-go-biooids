@@ -55,11 +55,14 @@ class EventController {
       id: req.user!.id,
       systemRole: req.user!.systemRole as SystemRole,
     };
+    const newImageFiles = req.files as Express.Multer.File[];
     const updatedEvent = await eventService.updateEvent(
       eventId,
       req.body,
-      user
+      user,
+      newImageFiles
     );
+
     res.status(200).json({
       status: "success",
       message: "Event updated successfully.",
