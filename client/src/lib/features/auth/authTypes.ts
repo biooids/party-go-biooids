@@ -35,6 +35,7 @@ export interface SanitizedUserDto {
   createdAt: string;
   updatedAt: string;
   isVerifiedCreator: boolean;
+  xp: number;
 }
 
 // --- API Response Shape ---

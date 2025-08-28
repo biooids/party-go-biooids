@@ -23,6 +23,7 @@ import EditEventDialog from "./EditEventDialog";
 import Map from "@/components/pages/map/Map";
 import { Marker, ViewStateChangeEvent } from "react-map-gl";
 import EventComments from "@/components/pages/events/comments/EventComments";
+import EventQRCode from "./EventQRCode";
 
 const getStatusInfo = (status: EventStatus) => {
   switch (status) {
@@ -191,6 +192,18 @@ export default function MyEventDetailView({ event }: { event: Event }) {
             </Card>
           </div>
         </div>
+
+        {event.status === EventStatus.APPROVED && (
+          <>
+            <Separator />
+            <div className="space-y-4">
+              <EventQRCode
+                eventId={event._id}
+                qrCodeSecret={event.qrCodeSecret}
+              />
+            </div>
+          </>
+        )}
 
         {/* ✅ ADDED: Comments section */}
         <Separator />

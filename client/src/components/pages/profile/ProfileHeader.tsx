@@ -1,5 +1,4 @@
-// src/components/pages/profile/ProfileHeader.tsx
-
+//src/components/pages/profile/ProfileHeader.tsx
 "use client";
 
 import { useState } from "react";
@@ -9,7 +8,7 @@ import { UserProfile, CurrentUser } from "@/lib/features/user/userTypes";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
-import { Edit, ImageIcon, Calendar, MapPin } from "lucide-react";
+import { Edit, ImageIcon, Calendar, MapPin, Award } from "lucide-react"; // ✅ 1. Import new icon
 import FollowButton from "./FollowButton";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,13 +34,13 @@ export default function ProfileHeader({
   currentUser,
   onEdit,
 }: ProfileHeaderProps) {
-  // ✅ 4. State to manage the banner's loading status for a smooth transition
   const [isBannerLoading, setBannerLoading] = useState(true);
+  console.log("User object in ProfileHeader:", user);
 
   return (
     <Card className="overflow-hidden">
       {/* Banner Image */}
-      <div className="relative h-64 w-full bg-muted">
+      <div className="relative h-48 sm:h-64 w-full bg-muted">
         {user.bannerImage ? (
           <>
             {isBannerLoading && <Skeleton className="h-full w-full" />}
@@ -108,9 +107,19 @@ export default function ProfileHeader({
               {format(new Date(user.createdAt), "MMMM yyyy")}
             </div>
 
+            {/* ✅ 2. ADDED: Display the user's XP */}
+
+            {typeof user.xp === "number" && (
+              <div className="flex items-center gap-2">
+                <Award className="h-4 w-4 text-yellow-500" />
+                <span className="font-semibold text-foreground">{user.xp}</span>
+                XP
+              </div>
+            )}
+
             <Link
               href={`/profile/${user.username}/following`}
-              className="flex items-center gap-2 hover-text-primary"
+              className="flex items-center gap-2 hover:text-primary"
             >
               <span className="font-semibold text-foreground">
                 {user.followingCount}
@@ -119,7 +128,7 @@ export default function ProfileHeader({
             </Link>
             <Link
               href={`/profile/${user.username}/followers`}
-              className="flex items-center gap-2 hover-text-primary"
+              className="flex items-center gap-2 hover:text-primary"
             >
               <span className="font-semibold text-foreground">
                 {user.followersCount}

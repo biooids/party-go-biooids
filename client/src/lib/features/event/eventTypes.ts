@@ -24,6 +24,8 @@ export interface Event {
   imageUrls: string[];
   status: EventStatus;
   isSaved?: boolean;
+  qrCodeSecret: string;
+
   commentCount?: number;
   location: {
     type: "Point";
