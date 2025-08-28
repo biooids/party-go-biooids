@@ -26,3 +26,13 @@ export const placesNearbySchema = z.object({
     categories: z.string().optional(),
   }),
 });
+
+/**
+ * ✅ ADDED: Schema to validate coordinates for reverse geocoding.
+ */
+export const reverseGeocodeSchema = z.object({
+  query: z.object({
+    lng: z.coerce.number().min(-180).max(180, "Invalid longitude."),
+    lat: z.coerce.number().min(-90).max(90, "Invalid latitude."),
+  }),
+});

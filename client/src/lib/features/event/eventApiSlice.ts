@@ -3,10 +3,11 @@
 import { apiSlice } from "../../api/apiSlice";
 import {
   CreateEventDto,
+  UpdateEventDto,
   GetEventsApiResponse,
   GetEventApiResponse,
-  GetMyEventsApiResponse, // ✅ 1. Import the new type
-  UpdateEventDto,
+  GetMyEventsApiResponse,
+  GetNearbyEventsApiResponse,
   Event,
 } from "./eventTypes";
 
@@ -119,11 +120,34 @@ export const eventApiSlice = apiSlice.injectEndpoints({
         { type: "Events", id: eventId },
       ],
     }),
+
+    /**
+     * ✅ ADDED: Fetches all approved events within a given radius.
+     */
+    getNearbyEvents: builder.query<
+      GetNearbyEventsApiResponse,
+      { lat: number; lng: number; radius?: number }
+    >({
+      query: (
+        { lat, lng, radius = 10000 } // Default radius of 10km
+      ) => `/events/nearby?lat=${lat}&lng=${lng}&radius=${radius}`,
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.data.events.map(({ _id }) => ({
+                type: "Events" as const,
+                id: _id,
+              })),
+              { type: "Events", id: "NEARBY_LIST" },
+            ]
+          : [{ type: "Events", id: "NEARBY_LIST" }],
+    }),
   }),
 });
 
 export const {
   useGetEventsQuery,
+  useGetNearbyEventsQuery,
   useGetMyEventsQuery,
   useGetEventByIdQuery,
   useCreateEventMutation,

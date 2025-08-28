@@ -1,7 +1,11 @@
 import { Router } from "express";
 import { eventController } from "./event.controller.js";
 import { validate } from "../../middleware/validate.js";
-import { createEventSchema, updateEventSchema } from "./event.validation.js";
+import {
+  createEventSchema,
+  updateEventSchema,
+  getEventsNearbySchema,
+} from "./event.validation.js";
 import { authenticate } from "../../middleware/authenticate.js";
 import { checkVerification } from "../../middleware/checkVerification.js";
 import { uploadImage } from "../../middleware/multer.config.js";
@@ -13,6 +17,11 @@ const requireAuth = authenticate({ required: true });
 
 // --- Public Routes ---
 router.get("/", eventController.getAll);
+router.get(
+  "/nearby",
+  validate(getEventsNearbySchema),
+  eventController.getNearby
+);
 
 // --- Protected Routes ---
 

@@ -1,9 +1,7 @@
-// src/lib/features/map/mapApiSlice.ts
-
+//src/lib/features/map/mapApiSlice.ts
 import { apiSlice } from "../../api/apiSlice";
 import { MapApiResponse } from "./mapTypes";
 
-// Note: Remember to add 'MapPlaces' to the tagTypes array in your main apiSlice.ts
 export const mapApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     /**
@@ -23,6 +21,15 @@ export const mapApiSlice = apiSlice.injectEndpoints({
         return `/maps/geocode?${params.toString()}`;
       },
     }),
+
+    /**
+     * A lazy query to convert coordinates into a human-readable address.
+     */
+    reverseGeocode: builder.query<MapApiResponse, { lng: number; lat: number }>(
+      {
+        query: ({ lng, lat }) => `/maps/reverse-geocode?lng=${lng}&lat=${lat}`,
+      }
+    ),
 
     /**
      * Query to get points of interest near a given location.
@@ -47,6 +54,7 @@ export const mapApiSlice = apiSlice.injectEndpoints({
 });
 
 export const {
-  useLazyGeocodeAddressQuery, // Exported as 'lazy' to be triggered on demand
+  useLazyGeocodeAddressQuery,
+  useLazyReverseGeocodeQuery,
   useGetPlacesNearbyQuery,
 } = mapApiSlice;

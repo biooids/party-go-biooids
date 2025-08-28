@@ -25,3 +25,14 @@ export const createEventSchema = z.object({
 export const updateEventSchema = z.object({
   body: createEventSchema.shape.body.partial(),
 });
+
+/**
+ * ✅ ADDED: Schema to validate query parameters for the nearby events endpoint.
+ */
+export const getEventsNearbySchema = z.object({
+  query: z.object({
+    lat: z.coerce.number().min(-90).max(90, "Invalid latitude."),
+    lng: z.coerce.number().min(-180).max(180, "Invalid longitude."),
+    radius: z.coerce.number().int().positive().max(50000).default(10000),
+  }),
+});

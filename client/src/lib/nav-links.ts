@@ -8,7 +8,8 @@ import {
   ShieldCheck,
   PlusSquare,
   ClipboardList,
-  Bookmark, // ✅ 1. Import a new icon
+  Bookmark,
+  QrCode,
   type LucideIcon,
   Map,
 } from "lucide-react";
@@ -61,6 +62,11 @@ export const mainNavLinks: NavLink[] = [
     href: "/map",
     label: "map",
     icon: Map,
+  },
+  {
+    href: "/scan",
+    label: "Scan",
+    icon: QrCode,
   },
 ];
 

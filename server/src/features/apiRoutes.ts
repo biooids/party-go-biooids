@@ -11,8 +11,8 @@ import verificationRequestRoutes from "../features/verificationRequest/verificat
 import { savedEventRoutes } from "../features/savedEvent/savedEvent.routes.js";
 import { commentRoutes } from "../features/comment/comment.routes.js";
 import mapRoutes from "../features/map/map.routes.js";
-import checkInRoutes from "../features/checkIn/checkIn.routes.js"; // ✅ 1. Import check-in routes
-
+import checkInRoutes from "../features/checkIn/checkIn.routes.js";
+import directionsRoutes from "../features/directions/directions.routes.js";
 const router: Router = Router();
 
 // This middleware runs on all API routes
@@ -33,6 +33,7 @@ router.use("/verification-requests", verificationRequestRoutes);
 router.use("/saved-events", savedEventRoutes);
 router.use("/comments", commentRoutes);
 router.use("/maps", mapRoutes);
-router.use("/check-in", checkInRoutes); // ✅ 2. Use the new check-in routes
+router.use("/check-in", checkInRoutes);
+router.use("/directions", directionsRoutes); // ✅ 2. Use the new directions routes
 
 export default router;

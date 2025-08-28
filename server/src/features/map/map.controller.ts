@@ -33,6 +33,15 @@ class MapController {
     );
     res.status(200).json({ status: "success", data: { features } });
   });
+
+  reverseGeocode = asyncHandler(async (req: Request, res: Response) => {
+    const { lng, lat } = req.query;
+    const features = await mapService.reverseGeocodeCoordinates(
+      Number(lng),
+      Number(lat)
+    );
+    res.status(200).json({ status: "success", data: { features } });
+  });
 }
 
 export const mapController = new MapController();

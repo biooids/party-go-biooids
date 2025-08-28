@@ -2,53 +2,85 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import Link from "next/link"; // ✅ 1. Import Link
+import Link from "next/link";
+import { format } from "date-fns";
+import { toast } from "sonner";
 import { Event, EventStatus } from "@/lib/features/event/eventTypes";
 import { useResubmitEventMutation } from "@/lib/features/event/eventApiSlice";
-import { toast } from "sonner";
-
-// UI Components
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-
-// Icons and Utils
-import { Calendar, MapPin, Edit, Ticket, Send, Loader2 } from "lucide-react";
-import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
-// Child Components
-// ✅ 2. REMOVED: The EditEventDialog import is no longer needed.
+// UI Components
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+// Icons
+import {
+  Calendar,
+  MapPin,
+  Ticket,
+  Edit,
+  Send,
+  Loader2,
+  Expand,
+} from "lucide-react";
+
+// Map & Child Components
 import Map from "@/components/pages/map/Map";
-import { Marker, ViewStateChangeEvent } from "react-map-gl";
+import { Marker, ViewState, ViewStateChangeEvent } from "react-map-gl";
 import EventComments from "@/components/pages/events/comments/EventComments";
 import EventQRCode from "./EventQRCode";
+import { Badge } from "@/components/ui/badge";
 
+// Helper function to get color and text based on event status
 const getStatusInfo = (status: EventStatus) => {
   switch (status) {
     case EventStatus.APPROVED:
-      return { text: "Approved", className: "bg-green-500 text-white" };
+      return {
+        text: "Approved & Live",
+        className: "bg-green-100 text-green-800 border-green-300 border",
+      };
     case EventStatus.PENDING:
-      return { text: "Pending Review", className: "bg-yellow-500 text-white" };
+      return {
+        text: "Pending Review",
+        className: "bg-yellow-100 text-yellow-800 border-yellow-300 border",
+      };
     case EventStatus.REJECTED:
-      return { text: "Rejected", className: "bg-red-500 text-white" };
+      return {
+        text: "Rejected",
+        className: "bg-red-100 text-red-800 border-red-300 border",
+      };
+    case EventStatus.CANCELLED:
+      return {
+        text: "Cancelled",
+        className: "bg-gray-100 text-gray-800 border-gray-300 border",
+      };
     default:
-      return { text: "Unknown", className: "bg-gray-500 text-white" };
+      return { text: "Unknown", className: "bg-gray-200 text-gray-800" };
   }
 };
 
 export default function MyEventDetailView({ event }: { event: Event }) {
   const [selectedImage, setSelectedImage] = useState(event.imageUrls?.[0]);
-  // ✅ 3. REMOVED: The state for the edit dialog is no longer needed.
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+
   const [resubmitEvent, { isLoading: isResubmitting }] =
     useResubmitEventMutation();
   const statusInfo = getStatusInfo(event.status);
 
-  const [viewState, setViewState] = useState({
+  const [viewState, setViewState] = useState<ViewState>({
     longitude: event.location.coordinates[0],
     latitude: event.location.coordinates[1],
     zoom: 14,
+    pitch: 30,
+    bearing: 0,
+    padding: { top: 0, bottom: 0, left: 0, right: 0 },
   });
 
   const handleResubmit = () => {
@@ -59,15 +91,48 @@ export default function MyEventDetailView({ event }: { event: Event }) {
     });
   };
 
+  const MapContent = ({
+    onMoveHandler,
+  }: {
+    onMoveHandler: (evt: ViewStateChangeEvent) => void;
+  }) => (
+    <Map viewState={viewState} onMove={onMoveHandler}>
+      <Marker
+        longitude={event.location.coordinates[0]}
+        latitude={event.location.coordinates[1]}
+      >
+        <MapPin className="h-8 w-8 text-red-500 drop-shadow-lg" />
+      </Marker>
+    </Map>
+  );
+
   return (
     <>
-      <div className="mx-auto max-w-4xl space-y-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8 py-8">
+        {/* --- Status Banner --- */}
         <div className={cn("p-4 rounded-lg text-center", statusInfo.className)}>
           <h2 className="font-bold text-lg">Status: {statusInfo.text}</h2>
+          {event.status === EventStatus.PENDING && (
+            <p className="text-sm">
+              Your event is currently being reviewed by our team.
+            </p>
+          )}
+          {event.status === EventStatus.REJECTED && (
+            <p className="text-sm">
+              Your event was not approved. You can edit the details and
+              resubmit.
+            </p>
+          )}
+          {event.status === EventStatus.APPROVED && (
+            <p className="text-sm">
+              Your event is live and visible to the public.
+            </p>
+          )}
         </div>
 
+        {/* --- Image Gallery --- */}
         <div className="space-y-2">
-          <div className="relative h-48 sm:h-64 md:h-96 w-full overflow-hidden rounded-lg bg-muted">
+          <div className="relative h-64 sm:h-80 md:h-96 w-full overflow-hidden rounded-lg bg-muted">
             {selectedImage && (
               <Image
                 src={selectedImage}
@@ -75,19 +140,19 @@ export default function MyEventDetailView({ event }: { event: Event }) {
                 fill
                 priority
                 className="object-cover"
-                sizes="100vw"
+                sizes="(max-width: 768px) 100vw, 1280px"
               />
             )}
           </div>
           {event.imageUrls.length > 1 && (
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
               {event.imageUrls.map((url, index) => (
                 <button
                   key={index}
                   className={cn(
-                    "relative aspect-video w-full overflow-hidden rounded-md transition-opacity hover:opacity-100",
+                    "relative aspect-video w-full overflow-hidden rounded-md transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
                     selectedImage === url
-                      ? "opacity-100 ring-2 ring-primary"
+                      ? "opacity-100 ring-2 ring-primary ring-offset-2"
                       : "opacity-60"
                   )}
                   onClick={() => setSelectedImage(url)}
@@ -104,16 +169,16 @@ export default function MyEventDetailView({ event }: { event: Event }) {
           )}
         </div>
 
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2 space-y-4">
+        {/* --- Main Content Grid --- */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
             <div className="space-y-2">
-              <h1 className="text-4xl font-bold tracking-tight">
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
                 {event.name}
               </h1>
               <p className="text-muted-foreground">{event.description}</p>
             </div>
-            <div className="flex gap-2">
-              {/* ✅ 4. FIXED: The "Edit" button is now a Link that navigates to the dedicated edit page. */}
+            <div className="flex flex-wrap gap-2">
               <Button variant="outline" asChild>
                 <Link href={`/my-events/${event._id}/edit`}>
                   <Edit className="mr-2 h-4 w-4" />
@@ -132,21 +197,20 @@ export default function MyEventDetailView({ event }: { event: Event }) {
               )}
             </div>
           </div>
-          <div className="space-y-4">
-            <div className="h-48 w-full rounded-lg overflow-hidden border">
-              <Map
-                viewState={viewState}
-                onMove={(evt: ViewStateChangeEvent) =>
-                  setViewState(evt.viewState)
-                }
+          <div className="space-y-6">
+            <div className="relative h-64 w-full rounded-lg overflow-hidden border">
+              <MapContent
+                onMoveHandler={(evt) => setViewState(evt.viewState)}
+              />
+              <Button
+                variant="secondary"
+                size="icon"
+                className="absolute top-2 right-2 h-8 w-8"
+                onClick={() => setIsMapModalOpen(true)}
               >
-                <Marker
-                  longitude={event.location.coordinates[0]}
-                  latitude={event.location.coordinates[1]}
-                >
-                  <MapPin className="h-6 w-6 text-red-500" />
-                </Marker>
-              </Map>
+                <Expand className="h-4 w-4" />
+                <span className="sr-only">Open full map</span>
+              </Button>
             </div>
             <Card>
               <CardContent className="p-4 space-y-3">
@@ -188,10 +252,14 @@ export default function MyEventDetailView({ event }: { event: Event }) {
           </div>
         </div>
 
+        {/* --- QR Code Section (Creator Only) --- */}
         {event.status === EventStatus.APPROVED && (
           <>
             <Separator />
             <div className="space-y-4">
+              <h2 className="text-2xl font-bold tracking-tight">
+                Attendee Check-in
+              </h2>
               <EventQRCode
                 eventId={event._id}
                 qrCodeSecret={event.qrCodeSecret}
@@ -200,6 +268,7 @@ export default function MyEventDetailView({ event }: { event: Event }) {
           </>
         )}
 
+        {/* --- Comments Section --- */}
         <Separator />
         <div>
           <h2 className="text-2xl font-bold tracking-tight mb-4">
@@ -210,7 +279,18 @@ export default function MyEventDetailView({ event }: { event: Event }) {
           <EventComments eventId={event._id} />
         </div>
       </div>
-      {/* ✅ 5. REMOVED: The EditEventDialog component is no longer rendered here. */}
+
+      {/* --- Full-Screen Map Modal --- */}
+      <Dialog open={isMapModalOpen} onOpenChange={setIsMapModalOpen}>
+        <DialogContent className="max-w-5xl h-[80vh] flex flex-col p-2">
+          <DialogHeader className="p-4 pb-0">
+            <DialogTitle>Event Location: {event.name}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 rounded-lg overflow-hidden">
+            <MapContent onMoveHandler={(evt) => setViewState(evt.viewState)} />
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

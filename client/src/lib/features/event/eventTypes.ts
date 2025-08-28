@@ -95,3 +95,11 @@ export interface GetMyEventsApiResponse {
     events: Event[];
   };
 }
+
+export interface GetNearbyEventsApiResponse {
+  status: string;
+  results: number;
+  data: {
+    events: Event[];
+  };
+}

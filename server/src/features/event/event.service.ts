@@ -19,6 +19,8 @@ const creatorPopulation = {
   select: "name username profileImage",
 };
 
+const categoryPopulation = { path: "categoryId", select: "name" };
+
 // Helper function to extract the public_id from a full Cloudinary URL
 const getPublicIdFromUrl = (url: string): string | null => {
   try {
@@ -330,6 +332,39 @@ export class EventService {
       "Event resubmitted for approval."
     );
     return event.toObject();
+  }
+
+  /**
+   * ✅ ADDED: Finds all approved events within a given radius of a geographic point.
+   * @param latitude - The latitude of the center point.
+   * @param longitude - The longitude of the center point.
+   * @param radiusInMeters - The search radius in meters.
+   */
+  public async findEventsNearby(
+    latitude: number,
+    longitude: number,
+    radiusInMeters: number
+  ) {
+    const events = await Event.find({
+      // Only search for events that are approved and visible to the public.
+      status: EventStatus.APPROVED,
+      location: {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [longitude, latitude], // MongoDB expects [longitude, latitude]
+          },
+          // The maximum distance from the center point in meters.
+          $maxDistance: radiusInMeters,
+        },
+      },
+    })
+      .populate(creatorPopulation)
+      .populate(categoryPopulation)
+      .limit(50) // Add a limit to prevent returning too much data
+      .lean(); // Use .lean() for faster read-only operations
+
+    return events;
   }
 }
 

@@ -77,5 +77,28 @@ export class MapService {
       throw createHttpError(500, "Failed to fetch nearby places.");
     }
   }
+
+  /**
+   * ✅ ADDED: Converts geographic coordinates into a human-readable address.
+   * @param longitude - The longitude of the point.
+   * @param latitude - The latitude of the point.
+   */
+  async reverseGeocodeCoordinates(longitude: number, latitude: number) {
+    try {
+      const response = await mapboxApi.get<MapboxGeocodingResponse>(
+        `/${longitude},${latitude}.json`,
+        {
+          params: {
+            types: "address,poi", // Prioritize addresses and points of interest
+            limit: 1, // We only need the top result
+          },
+        }
+      );
+      return response.data.features;
+    } catch (error: any) {
+      logger.error({ err: error }, "Mapbox reverse geocoding API error");
+      throw createHttpError(500, "Failed to fetch address data.");
+    }
+  }
 }
 export const mapService = new MapService();

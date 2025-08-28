@@ -4,7 +4,11 @@ import { Router } from "express";
 import { mapController } from "./map.controller.js";
 import { authenticate } from "../../middleware/authenticate.js";
 import { validate } from "../../middleware/validate.js";
-import { geocodeSchema, placesNearbySchema } from "./map.validation.js";
+import {
+  geocodeSchema,
+  placesNearbySchema,
+  reverseGeocodeSchema,
+} from "./map.validation.js";
 
 const router: Router = Router();
 const requireAuth = authenticate({ required: true });
@@ -28,6 +32,12 @@ router.get(
   "/places-nearby",
   validate(placesNearbySchema),
   mapController.getPlacesNearby
+);
+
+router.get(
+  "/reverse-geocode",
+  validate(reverseGeocodeSchema),
+  mapController.reverseGeocode
 );
 
 export default router;

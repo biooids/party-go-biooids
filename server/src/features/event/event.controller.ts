@@ -121,6 +121,25 @@ class EventController {
       data: { event },
     });
   });
+
+  /**
+   * ✅ ADDED: Controller to find events based on geographic location.
+   */
+  getNearby = asyncHandler(async (req: Request, res: Response) => {
+    const { lat, lng, radius } = req.query;
+
+    const events = await eventService.findEventsNearby(
+      Number(lat),
+      Number(lng),
+      Number(radius)
+    );
+
+    res.status(200).json({
+      status: "success",
+      results: events.length,
+      data: { events },
+    });
+  });
 }
 
 export const eventController = new EventController();
