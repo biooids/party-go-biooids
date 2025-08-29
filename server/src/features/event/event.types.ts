@@ -28,4 +28,7 @@ export type CreateEventInputDto = Omit<
 >;
 
 // Data Transfer Object for updating an event.
-export type UpdateEventInputDto = Partial<CreateEventInputDto>;
+// All fields from the original are optional, PLUS the new temporary field.
+export type UpdateEventInputDto = Partial<CreateEventInputDto> & {
+  existingImageUrls?: string[]; // ✅ ADDED: This field is specific to the update operation.
+};

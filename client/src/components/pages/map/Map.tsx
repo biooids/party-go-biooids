@@ -1,3 +1,4 @@
+//src/components/pages/map/Map.tsx
 "use client";
 
 import ReactMapGL, {
@@ -14,7 +15,7 @@ interface MapProps {
     latitude: number;
     zoom: number;
   };
-  onMove: (evt: ViewStateChangeEvent) => void;
+  onMove?: (evt: ViewStateChangeEvent) => void;
   onClick?: (evt: MapMouseEvent) => void;
 }
 

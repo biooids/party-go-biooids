@@ -1,6 +1,7 @@
+//src/components/pages/my-events/MyEventDetailView.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -8,6 +9,10 @@ import { toast } from "sonner";
 import { Event, EventStatus } from "@/lib/features/event/eventTypes";
 import { useResubmitEventMutation } from "@/lib/features/event/eventApiSlice";
 import { cn } from "@/lib/utils";
+import { useLazyGetDirectionsQuery } from "@/lib/features/directions/directionsApiSlice";
+import { RouteData } from "@/lib/features/directions/directionsTypes";
+import RouteLayer from "../map/RouteLayer";
+import { getBoundsForRoute } from "@/lib/utils/map-utils";
 
 // UI Components
 import { Button } from "@/components/ui/button";
@@ -19,6 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 
 // Icons
 import {
@@ -29,6 +35,7 @@ import {
   Send,
   Loader2,
   Expand,
+  Route,
 } from "lucide-react";
 
 // Map & Child Components
@@ -36,7 +43,6 @@ import Map from "@/components/pages/map/Map";
 import { Marker, ViewState, ViewStateChangeEvent } from "react-map-gl";
 import EventComments from "@/components/pages/events/comments/EventComments";
 import EventQRCode from "./EventQRCode";
-import { Badge } from "@/components/ui/badge";
 
 // Helper function to get color and text based on event status
 const getStatusInfo = (status: EventStatus) => {
@@ -69,10 +75,17 @@ const getStatusInfo = (status: EventStatus) => {
 export default function MyEventDetailView({ event }: { event: Event }) {
   const [selectedImage, setSelectedImage] = useState(event.imageUrls?.[0]);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
 
   const [resubmitEvent, { isLoading: isResubmitting }] =
     useResubmitEventMutation();
   const statusInfo = getStatusInfo(event.status);
+
+  const [userLocation, setUserLocation] = useState<{
+    longitude: number;
+    latitude: number;
+  } | null>(null);
+  const [routeData, setRouteData] = useState<RouteData | null>(null);
 
   const [viewState, setViewState] = useState<ViewState>({
     longitude: event.location.coordinates[0],
@@ -83,6 +96,52 @@ export default function MyEventDetailView({ event }: { event: Event }) {
     padding: { top: 0, bottom: 0, left: 0, right: 0 },
   });
 
+  const [getDirections, { isFetching: isRouteLoading }] =
+    useLazyGetDirectionsQuery();
+
+  const handleGetDirections = useCallback(async () => {
+    if (!("geolocation" in navigator)) {
+      toast.error("Geolocation is not supported by your browser.");
+      return;
+    }
+    setRouteData(null);
+    toast.info("Finding your location...");
+    try {
+      const position = await new Promise<GeolocationPosition>(
+        (resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject);
+        }
+      );
+      const start = {
+        lng: position.coords.longitude,
+        lat: position.coords.latitude,
+      };
+      setUserLocation({ longitude: start.lng, latitude: start.lat });
+      toast.info("Calculating route...");
+      const result = await getDirections({
+        start,
+        end: {
+          lng: event.location.coordinates[0],
+          lat: event.location.coordinates[1],
+        },
+      }).unwrap();
+      setRouteData(result.data.route);
+      toast.success("Route found!");
+    } catch (error) {
+      toast.error(
+        "Could not get directions. Please ensure location access is enabled."
+      );
+    }
+  }, [event.location.coordinates, getDirections]);
+
+  useEffect(() => {
+    if (routeData && mapContainerRef.current) {
+      const { width, height } = mapContainerRef.current.getBoundingClientRect();
+      const newViewState = getBoundsForRoute(routeData.geometry, width, height);
+      setViewState((prevState) => ({ ...prevState, ...newViewState }));
+    }
+  }, [routeData]);
+
   const handleResubmit = () => {
     toast.promise(resubmitEvent(event._id).unwrap(), {
       loading: "Resubmitting for approval...",
@@ -92,17 +151,28 @@ export default function MyEventDetailView({ event }: { event: Event }) {
   };
 
   const MapContent = ({
-    onMoveHandler,
+    onMove,
   }: {
-    onMoveHandler: (evt: ViewStateChangeEvent) => void;
+    onMove?: (evt: ViewStateChangeEvent) => void;
   }) => (
-    <Map viewState={viewState} onMove={onMoveHandler}>
+    <Map viewState={viewState} onMove={onMove}>
       <Marker
         longitude={event.location.coordinates[0]}
         latitude={event.location.coordinates[1]}
       >
         <MapPin className="h-8 w-8 text-red-500 drop-shadow-lg" />
       </Marker>
+      {userLocation && (
+        <Marker
+          longitude={userLocation.longitude}
+          latitude={userLocation.latitude}
+        >
+          <div className="h-3 w-3 bg-blue-500 rounded-full border-2 border-white shadow" />
+        </Marker>
+      )}
+      {routeData && (
+        <RouteLayer id="my-event-route" routeGeoJson={routeData.geometry} />
+      )}
     </Map>
   );
 
@@ -185,6 +255,18 @@ export default function MyEventDetailView({ event }: { event: Event }) {
                   Edit Details
                 </Link>
               </Button>
+              <Button
+                variant="outline"
+                onClick={handleGetDirections}
+                disabled={isRouteLoading}
+              >
+                {isRouteLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Route className="mr-2 h-4 w-4" />
+                )}
+                Get Directions
+              </Button>
               {event.status === EventStatus.REJECTED && (
                 <Button onClick={handleResubmit} disabled={isResubmitting}>
                   {isResubmitting ? (
@@ -198,10 +280,11 @@ export default function MyEventDetailView({ event }: { event: Event }) {
             </div>
           </div>
           <div className="space-y-6">
-            <div className="relative h-64 w-full rounded-lg overflow-hidden border">
-              <MapContent
-                onMoveHandler={(evt) => setViewState(evt.viewState)}
-              />
+            <div
+              ref={mapContainerRef}
+              className="relative h-64 w-full rounded-lg overflow-hidden border"
+            >
+              <MapContent onMove={(evt) => setViewState(evt.viewState)} />
               <Button
                 variant="secondary"
                 size="icon"
@@ -287,7 +370,7 @@ export default function MyEventDetailView({ event }: { event: Event }) {
             <DialogTitle>Event Location: {event.name}</DialogTitle>
           </DialogHeader>
           <div className="flex-1 rounded-lg overflow-hidden">
-            <MapContent onMoveHandler={(evt) => setViewState(evt.viewState)} />
+            <MapContent onMove={(evt) => setViewState(evt.viewState)} />
           </div>
         </DialogContent>
       </Dialog>

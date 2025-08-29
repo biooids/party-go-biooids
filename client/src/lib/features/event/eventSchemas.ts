@@ -1,3 +1,4 @@
+//src/lib/features/event/eventSchemas.ts
 import { z } from "zod";
 
 const eventFormSchema = z.object({

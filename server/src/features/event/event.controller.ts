@@ -8,6 +8,12 @@ import { createHttpError } from "../../utils/error.factory.js";
 
 class EventController {
   create = asyncHandler(async (req: Request, res: Response) => {
+    // --- MODIFIED DEBUGGING LOG BLOCK ---
+    console.log("--- INSIDE EVENT CONTROLLER ---");
+    console.log("Value of req.body:", req.body); // ✅ ADD THIS LINE
+    console.log("Value of req.files:", req.files);
+    console.log("-----------------------------");
+    // --- END OF DEBUGGING LOG ---
     const imageFiles = req.files as Express.Multer.File[];
     if (!imageFiles || imageFiles.length === 0) {
       throw createHttpError(400, "At least one event image is required.");

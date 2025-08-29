@@ -1,4 +1,3 @@
-//src/lib/features/map/mapApiSlice.ts
 import { apiSlice } from "../../api/apiSlice";
 import { MapApiResponse } from "./mapTypes";
 
@@ -6,7 +5,6 @@ export const mapApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     /**
      * A lazy query to get geocoding suggestions for a search string.
-     * 'Lazy' means it's triggered manually, not on component mount.
      */
     geocodeAddress: builder.query<
       MapApiResponse,
@@ -30,31 +28,8 @@ export const mapApiSlice = apiSlice.injectEndpoints({
         query: ({ lng, lat }) => `/maps/reverse-geocode?lng=${lng}&lat=${lat}`,
       }
     ),
-
-    /**
-     * Query to get points of interest near a given location.
-     */
-    getPlacesNearby: builder.query<
-      MapApiResponse,
-      { lng: number; lat: number; categories?: string }
-    >({
-      query: ({ lng, lat, categories }) => {
-        const params = new URLSearchParams({
-          lng: lng.toString(),
-          lat: lat.toString(),
-        });
-        if (categories) {
-          params.append("categories", categories);
-        }
-        return `/maps/places-nearby?${params.toString()}`;
-      },
-      providesTags: ["MapPlaces"],
-    }),
   }),
 });
 
-export const {
-  useLazyGeocodeAddressQuery,
-  useLazyReverseGeocodeQuery,
-  useGetPlacesNearbyQuery,
-} = mapApiSlice;
+export const { useLazyGeocodeAddressQuery, useLazyReverseGeocodeQuery } =
+  mapApiSlice;

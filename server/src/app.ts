@@ -7,7 +7,6 @@ import { globalErrorHandler } from "./middleware/globalErrorHandler.js";
 import { createHttpError } from "./utils/error.factory.js";
 import { corsOptions } from "./config/corsOptions.js";
 import apiRoutes from "./features/apiRoutes.js";
-import { apiLimiter } from "./middleware/rateLimiter.js";
 
 //Express
 const app: Express = express();
@@ -35,7 +34,7 @@ app.get("/", (_req: Request, res: Response) => {
 });
 
 // // --- API Routes  ---
-app.use("/api/v1", apiLimiter, apiRoutes);
+app.use("/api/v1", apiRoutes);
 
 // --- Not Found Handler ---
 // app.all("*", (req: Request, _res: Response, next: NextFunction) => {

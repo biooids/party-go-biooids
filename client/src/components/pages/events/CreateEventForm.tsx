@@ -1,4 +1,3 @@
-//src/components/pages/events/CreateEventForm.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -74,8 +73,6 @@ export default function CreateEventForm() {
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [viewState, setViewState] = useState(DEFAULT_LOCATION);
-  const [searchQuery, setSearchQuery] = useState("");
-  const debouncedSearchQuery = useDebounce(searchQuery, 500);
   const [triggerGeocode, { data: geocodeData, isFetching: isGeocoding }] =
     useLazyGeocodeAddressQuery();
   const [triggerReverseGeocode, { isFetching: isReverseGeocoding }] =
@@ -84,7 +81,6 @@ export default function CreateEventForm() {
     useState<MapPlaceFeature | null>(null);
   const [showResults, setShowResults] = useState(false);
 
-  // ✅ The form is now simply and correctly typed. All errors will be gone.
   const {
     register,
     handleSubmit,
@@ -105,10 +101,15 @@ export default function CreateEventForm() {
     },
   });
 
-  const descriptionValue = watch("description", "");
+  const addressValue = watch("address");
+  const debouncedSearchQuery = useDebounce(addressValue, 500);
 
   useEffect(() => {
-    if (debouncedSearchQuery && debouncedSearchQuery.length > 2) {
+    if (
+      debouncedSearchQuery &&
+      debouncedSearchQuery.length > 2 &&
+      showResults
+    ) {
       triggerGeocode({
         query: debouncedSearchQuery,
         lng: viewState.longitude,
@@ -120,15 +121,16 @@ export default function CreateEventForm() {
     triggerGeocode,
     viewState.longitude,
     viewState.latitude,
+    showResults,
   ]);
 
   const handleLocationSelect = (location: MapPlaceFeature) => {
+    const locationName = location.place_name || location.properties.name || "";
     setSelectedLocation(location);
-    setValue("address", location.place_name, { shouldValidate: true });
-    setSearchQuery(location.place_name);
+    setValue("address", locationName, { shouldValidate: true });
     setViewState({
-      longitude: location.center[0],
-      latitude: location.center[1],
+      longitude: location.geometry.coordinates[0],
+      latitude: location.geometry.coordinates[1],
       zoom: 15,
     });
     setShowResults(false);
@@ -136,12 +138,35 @@ export default function CreateEventForm() {
 
   const handleMapClick = async (evt: MapMouseEvent) => {
     const { lng, lat } = evt.lngLat;
-    setViewState((prev) => ({ ...prev, longitude: lng, latitude: lat }));
-    const result = await triggerReverseGeocode({ lng, lat }).unwrap();
-    if (result.data.features && result.data.features.length > 0) {
-      handleLocationSelect(result.data.features[0]);
-    } else {
-      toast.error("Could not determine an address for this location.");
+    setViewState((prev) => ({
+      ...prev,
+      longitude: lng,
+      latitude: lat,
+      zoom: 15,
+    }));
+
+    try {
+      const result = await triggerReverseGeocode({ lng, lat }).unwrap();
+      if (result.data.features && result.data.features.length > 0) {
+        // If Mapbox finds a name, use it.
+        handleLocationSelect(result.data.features[0]);
+      } else {
+        // ✅ FIX: If Mapbox finds no name, create a custom location.
+        const customLocation: MapPlaceFeature = {
+          id: `custom.${lng}.${lat}`,
+          type: "Feature",
+          place_name: `Custom Location at ${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+          properties: { name: "Custom Location", mapbox_id: "" },
+          geometry: { type: "Point", coordinates: [lng, lat] },
+          center: [lng, lat],
+        };
+        handleLocationSelect(customLocation);
+        toast.info(
+          "Custom location selected. You can edit the address manually."
+        );
+      }
+    } catch (error) {
+      toast.error("Could not select location. Please try again.");
     }
   };
 
@@ -179,24 +204,31 @@ export default function CreateEventForm() {
     }
 
     const formData = new FormData();
-
-    // ✅ All date and time logic is now handled here, which is much safer.
     const [hours, minutes] = data.time.split(":").map(Number);
     const combinedDate = new Date(data.date);
-    combinedDate.setHours(hours, minutes, 0, 0); // Set seconds and ms to 0
-
-    // Manual check to ensure the date is in the future
+    combinedDate.setHours(hours, minutes, 0, 0);
     if (combinedDate <= new Date()) {
       toast.error("The selected event date and time must be in the future.");
       return;
     }
-
     formData.append("name", data.name);
     formData.append("description", data.description);
     formData.append("address", data.address);
-    formData.append("date", combinedDate.toISOString()); // Send the final string to the backend
+    formData.append("date", combinedDate.toISOString());
     formData.append("price", data.price.toString());
     formData.append("categoryId", data.categoryId);
+
+    // ✅ FIX: Send the exact coordinates to the backend.
+    if (selectedLocation) {
+      formData.append(
+        "longitude",
+        String(selectedLocation.geometry.coordinates[0])
+      );
+      formData.append(
+        "latitude",
+        String(selectedLocation.geometry.coordinates[1])
+      );
+    }
 
     imageFiles.forEach((file) => formData.append("eventImages", file));
 
@@ -243,12 +275,12 @@ export default function CreateEventForm() {
                 <span
                   className={cn(
                     "text-xs",
-                    descriptionValue.length > MAX_DESC_LENGTH
+                    addressValue.length > MAX_DESC_LENGTH
                       ? "text-destructive"
                       : "text-muted-foreground"
                   )}
                 >
-                  {descriptionValue.length} / {MAX_DESC_LENGTH}
+                  {addressValue.length} / {MAX_DESC_LENGTH}
                 </span>
               </div>
               <Textarea
@@ -343,7 +375,11 @@ export default function CreateEventForm() {
                           selected={field.value}
                           onSelect={field.onChange}
                           disabled={{ before: new Date() }}
-                          autoFocus
+                          captionLayout="dropdown"
+                          fromDate={new Date()}
+                          toDate={
+                            new Date(new Date().getFullYear() + 10, 11, 31)
+                          }
                         />
                       </PopoverContent>
                     </Popover>
@@ -377,17 +413,15 @@ export default function CreateEventForm() {
                 <Input
                   id="address"
                   placeholder="Search..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setShowResults(true);
-                  }}
                   autoComplete="off"
+                  {...register("address", {
+                    onChange: () => setShowResults(true),
+                  })}
                 />
                 {(isGeocoding || isReverseGeocoding) && (
                   <Loader2 className="absolute right-2 top-2 h-5 w-5 animate-spin text-muted-foreground" />
                 )}
-                {geocodeData && searchQuery && showResults && (
+                {geocodeData && addressValue && showResults && (
                   <div className="absolute z-10 top-full mt-1 w-full bg-background border rounded-md shadow-lg max-h-48 overflow-y-auto">
                     {geocodeData.data.features.map((location) => (
                       <div
@@ -422,8 +456,8 @@ export default function CreateEventForm() {
               >
                 {selectedLocation && (
                   <Marker
-                    longitude={selectedLocation.center[0]}
-                    latitude={selectedLocation.center[1]}
+                    longitude={selectedLocation.geometry.coordinates[0]}
+                    latitude={selectedLocation.geometry.coordinates[1]}
                   >
                     <MapPin className="h-6 w-6 text-red-500 drop-shadow-lg" />
                   </Marker>

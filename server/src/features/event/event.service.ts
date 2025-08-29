@@ -1,7 +1,7 @@
 // src/features/event/event.service.ts
 
 import Event, { EventStatus } from "./event.model.js";
-import { CreateEventInputDto } from "./event.types.js";
+import { CreateEventInputDto, UpdateEventInputDto } from "./event.types.js";
 import { createHttpError } from "../../utils/error.factory.js";
 import { SystemRole } from "../../types/user.types.js";
 import {
@@ -38,53 +38,197 @@ const getPublicIdFromUrl = (url: string): string | null => {
   }
 };
 
+type EventInputDto = CreateEventInputDto & {
+  longitude?: number;
+  latitude?: number;
+};
+type EventUpdateDto = UpdateEventInputDto & {
+  longitude?: number;
+  latitude?: number;
+};
 export class EventService {
-  /**
-   * Creates a new event with a 'PENDING' status and multiple images.
-   */
-  /**
-   * Creates a new event with a 'PENDING' status, multiple images, and geocoded location.
-   */
-  /**
-   * Creates a new event with a 'PENDING' status, multiple images, and a unique QR code secret.
-   */
   public async createEvent(
-    input: CreateEventInputDto,
+    input: EventInputDto,
     creatorId: string,
     imageFiles: Express.Multer.File[]
   ) {
-    // 1. Geocode the address to get coordinates.
-    const geocodingResults = await mapService.geocodeAddress(input.address);
-    if (!geocodingResults || geocodingResults.length === 0) {
-      throw createHttpError(400, "Could not validate the provided address.");
-    }
-    const [longitude, latitude] = geocodingResults[0].center;
-    const location = {
-      type: "Point" as const,
-      coordinates: [longitude, latitude],
-    };
+    let location;
 
-    // 2. Upload images to Cloudinary.
+    if (input.latitude && input.longitude) {
+      location = {
+        type: "Point" as const,
+        coordinates: [input.longitude, input.latitude],
+      };
+    } else {
+      // Fallback to geocoding only if coordinates are not provided.
+      const geocodingResults = await mapService.geocodeAddress(input.address);
+      if (!geocodingResults || geocodingResults.length === 0) {
+        throw createHttpError(400, "Could not validate the provided address.");
+      }
+      const [longitude, latitude] = geocodingResults[0].center;
+      location = {
+        type: "Point" as const,
+        coordinates: [longitude, latitude],
+      };
+    }
+
+    // Upload images to Cloudinary.
     const uploadPromises = imageFiles.map((file) =>
       uploadToCloudinary(file.buffer, "event_images")
     );
     const uploadResults = await Promise.all(uploadPromises);
-    const imageUrls = uploadResults.map((result) => result.secure_url);
+
+    const uploadedImagesData = uploadResults.map((result) => ({
+      secure_url: result.secure_url,
+      public_id: result.public_id,
+    }));
+    const imageUrls = uploadedImagesData.map((data) => data.secure_url);
 
     const qrCodeSecret = crypto.randomBytes(16).toString("hex");
 
-    // 3. Create the event with all data.
-    const eventData = {
-      ...input,
-      creatorId,
-      imageUrls,
-      location,
-      qrCodeSecret, // ✅ Add the new secret to the event data
-      status: EventStatus.PENDING,
+    // Try to create the event in the database.
+    try {
+      const eventData = {
+        ...input,
+        creatorId,
+        imageUrls,
+        location, // Use the determined location object
+        qrCodeSecret,
+        status: EventStatus.PENDING,
+      };
+      const event = await Event.create(eventData);
+      return event.toObject();
+    } catch (error) {
+      // If database creation fails, clean up the uploaded images.
+      logger.error(
+        { err: error },
+        "Database error during event creation. Cleaning up Cloudinary assets."
+      );
+
+      const deletionPromises = uploadedImagesData.map((data) =>
+        deleteFromCloudinary(data.public_id)
+      );
+      await Promise.allSettled(deletionPromises);
+      throw error;
+    }
+  }
+
+  public async updateEvent(
+    eventId: string,
+    updateData: EventUpdateDto,
+    user: { id: string; systemRole: SystemRole },
+    newImageFiles: Express.Multer.File[]
+  ) {
+    // STEP 1: Fetch original event for checks.
+    const originalEvent = await Event.findById(eventId)
+      .select("creatorId status imageUrls address")
+      .lean();
+
+    if (!originalEvent) {
+      throw createHttpError(404, "Event not found.");
+    }
+
+    // STEP 2: Perform authorization check.
+    if (
+      originalEvent.creatorId.toString() !== user.id &&
+      user.systemRole !== SystemRole.ADMIN &&
+      user.systemRole !== SystemRole.SUPER_ADMIN
+    ) {
+      throw createHttpError(
+        403,
+        "You are not authorized to update this event."
+      );
+    }
+
+    // STEP 3: Handle all image processing.
+    const existingImageUrls = updateData.existingImageUrls || [];
+    let newUploadedUrls: string[] = [];
+
+    if (newImageFiles && newImageFiles.length > 0) {
+      const uploadPromises = newImageFiles.map((file) =>
+        uploadToCloudinary(file.buffer, "event_images")
+      );
+      const uploadResults = await Promise.all(uploadPromises);
+      newUploadedUrls = uploadResults.map((result) => result.secure_url);
+    }
+
+    const finalImageUrls = [...existingImageUrls, ...newUploadedUrls];
+
+    if (finalImageUrls.length === 0) {
+      throw createHttpError(400, "An event must have at least one image.");
+    }
+
+    const imagesToDelete = originalEvent.imageUrls.filter(
+      (url) => !existingImageUrls.includes(url)
+    );
+
+    if (imagesToDelete.length > 0) {
+      const deletionPromises = imagesToDelete.map((url) => {
+        const publicId = getPublicIdFromUrl(url);
+        return publicId ? deleteFromCloudinary(publicId) : Promise.resolve();
+      });
+      await Promise.allSettled(deletionPromises);
+    }
+
+    // STEP 4: Build the update payload object.
+    const updatePayload: Record<string, any> = {
+      imageUrls: finalImageUrls,
     };
 
-    const event = await Event.create(eventData);
-    return event.toObject();
+    // Add text fields from the DTO.
+    if (updateData.name) updatePayload.name = updateData.name;
+    if (updateData.description)
+      updatePayload.description = updateData.description;
+    if (updateData.date) updatePayload.date = updateData.date;
+    if (updateData.price !== undefined) updatePayload.price = updateData.price;
+    if (updateData.categoryId) updatePayload.categoryId = updateData.categoryId;
+
+    // ✅ FIX: Prioritize direct coordinates for location updates.
+    if (updateData.latitude && updateData.longitude) {
+      updatePayload.address = updateData.address; // Still update the address string
+      updatePayload.location = {
+        type: "Point",
+        coordinates: [updateData.longitude, updateData.latitude],
+      };
+    } else if (
+      updateData.address &&
+      updateData.address !== originalEvent.address
+    ) {
+      // Fallback to geocoding only if coordinates aren't sent and address changed.
+      const geocodingResults = await mapService.geocodeAddress(
+        updateData.address
+      );
+      if (geocodingResults && geocodingResults.length > 0) {
+        updatePayload.address = updateData.address;
+        updatePayload.location = {
+          type: "Point",
+          coordinates: geocodingResults[0].center,
+        };
+      }
+    }
+
+    // Reset status to PENDING if creator edits an approved event.
+    const isCreatorEditing = originalEvent.creatorId.toString() === user.id;
+    if (originalEvent.status === EventStatus.APPROVED && isCreatorEditing) {
+      updatePayload.status = EventStatus.PENDING;
+      logger.info(
+        { eventId, userId: user.id },
+        "Approved event was edited and reset to PENDING."
+      );
+    }
+
+    // STEP 5: Perform the atomic update.
+    const updatedEvent = await Event.findByIdAndUpdate(
+      eventId,
+      { $set: updatePayload },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedEvent) {
+      throw createHttpError(404, "Event could not be updated.");
+    }
+
+    return updatedEvent.toObject();
   }
   /**
    * Finds a single event by its ID, but only if it is approved.
@@ -132,98 +276,6 @@ export class EventService {
     return events;
   }
 
-  /**
-   * Updates an event. Only the creator or an admin can perform this action.
-   */
-
-  public async updateEvent(
-    eventId: string,
-    updateData: any, // The body from FormData will have mixed types
-    user: { id: string; systemRole: SystemRole },
-    newImageFiles: Express.Multer.File[]
-  ) {
-    const event = await Event.findById(eventId);
-    if (!event) {
-      throw createHttpError(404, "Event not found.");
-    }
-
-    if (
-      event.creatorId.toString() !== user.id &&
-      user.systemRole !== SystemRole.ADMIN &&
-      user.systemRole !== SystemRole.SUPER_ADMIN
-    ) {
-      throw createHttpError(
-        403,
-        "You are not authorized to update this event."
-      );
-    }
-
-    // --- Handle Image Updates ---
-    const existingImageUrls = JSON.parse(updateData.existingImageUrls || "[]");
-    let newUploadedUrls: string[] = [];
-
-    if (newImageFiles && newImageFiles.length > 0) {
-      const uploadPromises = newImageFiles.map((file) =>
-        uploadToCloudinary(file.buffer, "event_images")
-      );
-      const uploadResults = await Promise.all(uploadPromises);
-      newUploadedUrls = uploadResults.map((result) => result.secure_url);
-    }
-
-    const finalImageUrls = [...existingImageUrls, ...newUploadedUrls];
-
-    // ✅ ADDED: Critical validation to ensure at least one image remains.
-    if (finalImageUrls.length === 0) {
-      throw createHttpError(400, "An event must have at least one image.");
-    }
-
-    const imagesToDelete = event.imageUrls.filter(
-      (url) => !existingImageUrls.includes(url)
-    );
-
-    if (imagesToDelete.length > 0) {
-      const deletionPromises = imagesToDelete.map((url) => {
-        const publicId = getPublicIdFromUrl(url);
-        return publicId ? deleteFromCloudinary(publicId) : Promise.resolve();
-      });
-      await Promise.allSettled(deletionPromises);
-    }
-
-    event.imageUrls = finalImageUrls;
-
-    // --- Handle Text and Location Updates ---
-    if (updateData.address && updateData.address !== event.address) {
-      const geocodingResults = await mapService.geocodeAddress(
-        updateData.address
-      );
-      if (geocodingResults && geocodingResults.length > 0) {
-        event.location = {
-          type: "Point",
-          coordinates: geocodingResults[0].center,
-        };
-      }
-    }
-
-    const wasApproved = event.status === EventStatus.APPROVED;
-    const isCreatorEditing = event.creatorId.toString() === user.id;
-
-    if (wasApproved && isCreatorEditing) {
-      event.status = EventStatus.PENDING;
-      logger.info(
-        { eventId, userId: user.id },
-        "Approved event was edited and reset to PENDING."
-      );
-    }
-
-    if (updateData.name) event.name = updateData.name;
-    if (updateData.description) event.description = updateData.description;
-    if (updateData.date) event.date = new Date(updateData.date);
-    if (updateData.price) event.price = Number(updateData.price);
-    if (updateData.categoryId) event.categoryId = updateData.categoryId;
-
-    await event.save();
-    return event.toObject();
-  }
   /**
    * Deletes an event and all its associated images from Cloudinary.
    */

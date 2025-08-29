@@ -1,3 +1,4 @@
+//src/app/%28app%29/events/create/page.tsx
 "use client";
 
 import { useEffect } from "react"; // ✅ 1. Import useEffect and useRouter

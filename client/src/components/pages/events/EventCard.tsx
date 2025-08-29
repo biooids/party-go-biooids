@@ -1,5 +1,3 @@
-// src/components/pages/events/EventCard.tsx
-
 "use client";
 
 import Image from "next/image";
@@ -20,8 +18,18 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // ✅ 1. Import Avatar components
 import { MapPin, ImageIcon, Bookmark, BookmarkCheck } from "lucide-react";
 import { format } from "date-fns";
+
+// ✅ 2. Add the getInitials helper function
+const getInitials = (name?: string) => {
+  if (!name) return "?";
+  const words = name.split(" ").filter(Boolean);
+  if (words.length === 0) return "?";
+  if (words.length === 1) return words[0][0].toUpperCase();
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+};
 
 export default function EventCard({ event }: { event: Event }) {
   const { user } = useAuth();
@@ -31,7 +39,6 @@ export default function EventCard({ event }: { event: Event }) {
   const primaryImageUrl = event.imageUrls?.[0];
 
   const handleSaveToggle = (e: React.MouseEvent) => {
-    // Prevent the click from navigating the user
     e.preventDefault();
     e.stopPropagation();
 
@@ -52,8 +59,11 @@ export default function EventCard({ event }: { event: Event }) {
   };
 
   return (
-    <Card className="overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1">
-      <Link href={`/events/${event._id}`} className="group">
+    <Card className="overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1 flex flex-col">
+      <Link
+        href={`/events/${event._id}`}
+        className="group flex flex-col flex-1"
+      >
         <CardHeader className="p-0">
           <div className="relative h-48 w-full bg-muted">
             {primaryImageUrl ? (
@@ -69,12 +79,11 @@ export default function EventCard({ event }: { event: Event }) {
                 <ImageIcon className="h-12 w-12 text-muted-foreground/30" />
               </div>
             )}
-            {/* Save/Unsave Icon Button */}
             {user && (
               <Button
                 variant="secondary"
                 size="icon"
-                className="absolute top-2 left-2 h-8 w-8 rounded-full"
+                className="absolute top-2 left-2 h-8 w-8 rounded-full z-10"
                 onClick={handleSaveToggle}
               >
                 {event.isSaved ? (
@@ -94,7 +103,7 @@ export default function EventCard({ event }: { event: Event }) {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-4">
+        <CardContent className="p-4 flex-1">
           <p className="text-sm text-primary font-semibold">
             {format(new Date(event.date), "EEE, MMM d 'at' h:mm a")}
           </p>
@@ -107,7 +116,21 @@ export default function EventCard({ event }: { event: Event }) {
           </p>
         </CardContent>
       </Link>
-      <CardFooter className="p-4 pt-0">
+      <CardFooter className="p-4 pt-0 flex justify-between items-center">
+        {/* ✅ 3. ADDED: Author avatar and name, linking to their profile */}
+        <Link
+          href={`/profile/${event.creatorId.username}`}
+          className="flex items-center gap-2 group/author"
+          onClick={(e) => e.stopPropagation()} // Prevents navigating to the event page
+        >
+          <Avatar className="h-6 w-6">
+            <AvatarImage src={event.creatorId.profileImage ?? ""} />
+            <AvatarFallback>{getInitials(event.creatorId.name)}</AvatarFallback>
+          </Avatar>
+          <span className="text-xs text-muted-foreground group-hover/author:underline">
+            {event.creatorId.name}
+          </span>
+        </Link>
         <Badge variant="secondary">{event.categoryId.name}</Badge>
       </CardFooter>
     </Card>

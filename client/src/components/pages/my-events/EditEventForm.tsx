@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import {
   updateEventSchema,
-  UpdateEventFormValues, // ✅ 1. Use the correct exported type
+  UpdateEventFormValues,
 } from "@/lib/features/event/eventSchemas";
 import { Event } from "@/lib/features/event/eventTypes";
 import { useUpdateEventMutation } from "@/lib/features/event/eventApiSlice";
@@ -21,8 +21,14 @@ import {
 import { useDebounce } from "@/lib/hooks/useDebounce";
 import { MapPlaceFeature } from "@/lib/features/map/mapTypes";
 import { cn } from "@/lib/utils";
-
-// UI Components
+import Map from "@/components/pages/map/Map";
+import {
+  Marker,
+  type ViewStateChangeEvent,
+  type MapMouseEvent,
+} from "react-map-gl";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Card,
   CardContent,
@@ -31,10 +37,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -42,32 +51,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 import { Separator } from "@/components/ui/separator";
-
-// Icons & Map
+import { Textarea } from "@/components/ui/textarea";
 import {
-  Loader2,
-  X,
-  ImagePlus,
   Calendar as CalendarIcon,
-  MapPin,
   Clock,
+  ImagePlus,
+  Loader2,
+  MapPin,
+  X,
 } from "lucide-react";
-import Map from "@/components/pages/map/Map";
-import {
-  Marker,
-  type ViewStateChangeEvent,
-  type MapMouseEvent,
-} from "react-map-gl";
 
 const MAX_IMAGES = 5;
-const MAX_DESC_LENGTH = 500; // ✅ 2. Define the missing constant
+const MAX_DESC_LENGTH = 500;
 
 interface EditEventFormProps {
   event: Event;
@@ -89,8 +85,6 @@ export default function EditEventForm({ event }: EditEventFormProps) {
     latitude: event.location.coordinates[1],
     zoom: 15,
   });
-  const [searchQuery, setSearchQuery] = useState(event.address);
-  const debouncedSearchQuery = useDebounce(searchQuery, 500);
   const [triggerGeocode, { data: geocodeData, isFetching: isGeocoding }] =
     useLazyGeocodeAddressQuery();
   const [triggerReverseGeocode, { isFetching: isReverseGeocoding }] =
@@ -105,7 +99,6 @@ export default function EditEventForm({ event }: EditEventFormProps) {
     setValue,
     formState: { errors },
   } = useForm<UpdateEventFormValues>({
-    // ✅ 1. Use the correct type here as well
     resolver: zodResolver(updateEventSchema),
     defaultValues: {
       name: event.name || "",
@@ -113,18 +106,19 @@ export default function EditEventForm({ event }: EditEventFormProps) {
       address: event.address || "",
       date: event.date ? new Date(event.date) : undefined,
       time: event.date ? format(new Date(event.date), "HH:mm") : "",
-      price: event.price || 0,
+      price: event.price ?? 0,
       categoryId: event.categoryId?._id || "",
     },
   });
 
-  const descriptionValue = watch("description", "");
+  const addressValue = watch("address");
+  const debouncedSearchQuery = useDebounce(addressValue, 500);
 
   useEffect(() => {
     if (
       debouncedSearchQuery &&
       debouncedSearchQuery.length > 2 &&
-      debouncedSearchQuery !== event.address
+      showResults
     ) {
       triggerGeocode({
         query: debouncedSearchQuery,
@@ -137,15 +131,15 @@ export default function EditEventForm({ event }: EditEventFormProps) {
     triggerGeocode,
     viewState.longitude,
     viewState.latitude,
-    event.address,
+    showResults,
   ]);
 
   const handleLocationSelect = (location: MapPlaceFeature) => {
-    setValue("address", location.place_name, { shouldValidate: true });
-    setSearchQuery(location.place_name);
+    const locationName = location.place_name || location.properties.name || "";
+    setValue("address", locationName, { shouldValidate: true });
     setViewState({
-      longitude: location.center[0],
-      latitude: location.center[1],
+      longitude: location.geometry.coordinates[0],
+      latitude: location.geometry.coordinates[1],
       zoom: 15,
     });
     setShowResults(false);
@@ -159,11 +153,26 @@ export default function EditEventForm({ event }: EditEventFormProps) {
       latitude: lat,
       zoom: 15,
     }));
-    const result = await triggerReverseGeocode({ lng, lat }).unwrap();
-    if (result.data.features && result.data.features.length > 0) {
-      handleLocationSelect(result.data.features[0]);
-    } else {
-      toast.error("Could not determine an address for this location.");
+    try {
+      const result = await triggerReverseGeocode({ lng, lat }).unwrap();
+      if (result.data.features && result.data.features.length > 0) {
+        handleLocationSelect(result.data.features[0]);
+      } else {
+        const customLocation: MapPlaceFeature = {
+          id: `custom.${lng}.${lat}`,
+          type: "Feature",
+          place_name: `Custom Location at ${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+          properties: { name: "Custom Location", mapbox_id: "" },
+          geometry: { type: "Point", coordinates: [lng, lat] },
+          center: [lng, lat],
+        };
+        handleLocationSelect(customLocation);
+        toast.info(
+          "Custom location selected. You can edit the address manually."
+        );
+      }
+    } catch (error) {
+      toast.error("Could not select location. Please try again.");
     }
   };
 
@@ -205,7 +214,7 @@ export default function EditEventForm({ event }: EditEventFormProps) {
 
     const formData = new FormData();
 
-    // Append text fields that have values
+    // Append text fields if they have values (since all are optional)
     if (data.name) formData.append("name", data.name);
     if (data.description) formData.append("description", data.description);
     if (data.address) formData.append("address", data.address);
@@ -215,11 +224,15 @@ export default function EditEventForm({ event }: EditEventFormProps) {
     if (data.date && data.time) {
       const [hours, minutes] = data.time.split(":").map(Number);
       const combinedDate = new Date(data.date);
-      combinedDate.setHours(hours, minutes);
+      combinedDate.setHours(hours, minutes, 0, 0);
       formData.append("date", combinedDate.toISOString());
     }
 
-    // Append image data for the backend to process
+    // ✅ FIX: Send the final coordinates from the map's state.
+    formData.append("longitude", String(viewState.longitude));
+    formData.append("latitude", String(viewState.latitude));
+
+    // This is the key part for updates: send existing URLs and new files
     formData.append("existingImageUrls", JSON.stringify(existingImages));
     newImageFiles.forEach((file) => {
       formData.append("newImages", file);
@@ -238,7 +251,6 @@ export default function EditEventForm({ event }: EditEventFormProps) {
       }
     );
   };
-
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <Card>
@@ -268,12 +280,12 @@ export default function EditEventForm({ event }: EditEventFormProps) {
                 <span
                   className={cn(
                     "text-xs",
-                    (descriptionValue?.length || 0) > MAX_DESC_LENGTH
+                    (watch("description")?.length || 0) > MAX_DESC_LENGTH
                       ? "text-destructive"
                       : "text-muted-foreground"
                   )}
                 >
-                  {descriptionValue?.length || 0} / {MAX_DESC_LENGTH}
+                  {watch("description")?.length || 0} / {MAX_DESC_LENGTH}
                 </span>
               </div>
               <Textarea
@@ -333,9 +345,7 @@ export default function EditEventForm({ event }: EditEventFormProps) {
               </div>
             </div>
           </div>
-
           <Separator />
-
           <div className="space-y-4">
             <h3 className="text-lg font-semibold border-b pb-2">Date & Time</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -368,7 +378,11 @@ export default function EditEventForm({ event }: EditEventFormProps) {
                           selected={field.value}
                           onSelect={field.onChange}
                           disabled={{ before: new Date() }}
-                          autoFocus
+                          captionLayout="dropdown"
+                          fromDate={new Date()}
+                          toDate={
+                            new Date(new Date().getFullYear() + 10, 11, 31)
+                          }
                         />
                       </PopoverContent>
                     </Popover>
@@ -382,38 +396,7 @@ export default function EditEventForm({ event }: EditEventFormProps) {
               </div>
               <div>
                 <Label>Time</Label>
-                <Controller
-                  name="time"
-                  control={control}
-                  render={({ field }) => (
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a time..." />
-                        </SelectTrigger>
-                        <SelectContent position="popper" className="max-h-60">
-                          {Array.from({ length: 24 * 4 }, (_, i) => {
-                            const hour = Math.floor(i / 4)
-                              .toString()
-                              .padStart(2, "0");
-                            const minute = ((i % 4) * 15)
-                              .toString()
-                              .padStart(2, "0");
-                            return `${hour}:${minute}`;
-                          }).map((timeValue) => (
-                            <SelectItem key={timeValue} value={timeValue}>
-                              {timeValue}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                />
+                <Input id="time" type="time" {...register("time")} />
                 {errors.time && (
                   <p className="text-sm text-destructive mt-1">
                     {errors.time.message}
@@ -422,9 +405,7 @@ export default function EditEventForm({ event }: EditEventFormProps) {
               </div>
             </div>
           </div>
-
           <Separator />
-
           <div className="space-y-4">
             <h3 className="text-lg font-semibold border-b pb-2">Location</h3>
             <div className="space-y-2">
@@ -435,17 +416,15 @@ export default function EditEventForm({ event }: EditEventFormProps) {
                 <Input
                   id="address"
                   placeholder="Search..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setShowResults(true);
-                  }}
                   autoComplete="off"
+                  {...register("address", {
+                    onChange: () => setShowResults(true),
+                  })}
                 />
                 {(isGeocoding || isReverseGeocoding) && (
                   <Loader2 className="absolute right-2 top-2 h-5 w-5 animate-spin text-muted-foreground" />
                 )}
-                {geocodeData && searchQuery && showResults && (
+                {geocodeData && addressValue && showResults && (
                   <div className="absolute z-10 top-full mt-1 w-full bg-background border rounded-md shadow-lg max-h-48 overflow-y-auto">
                     {geocodeData.data.features.map((location) => (
                       <div
@@ -487,9 +466,7 @@ export default function EditEventForm({ event }: EditEventFormProps) {
               </Map>
             </div>
           </div>
-
           <Separator />
-
           <div className="space-y-4">
             <h3 className="text-lg font-semibold border-b pb-2">Images</h3>
             <div className="space-y-2">

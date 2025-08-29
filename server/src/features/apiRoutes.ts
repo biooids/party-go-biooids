@@ -1,7 +1,13 @@
-// FILE: src/routes/apiRoutes.ts (Corrected)
-
+//src/features/apiRoutes.ts
 import { Router } from "express";
 import { authenticate } from "../middleware/authenticate.js";
+
+import {
+  apiLimiter,
+  authLimiter,
+  mapApiLimiter,
+} from "../middleware/rateLimiter.js";
+
 import authRoutes from "../features/auth/auth.routes.js";
 import userRoutes from "../features/user/user.routes.js";
 import eventRoutes from "../features/event/event.routes.js";
@@ -13,9 +19,9 @@ import { commentRoutes } from "../features/comment/comment.routes.js";
 import mapRoutes from "../features/map/map.routes.js";
 import checkInRoutes from "../features/checkIn/checkIn.routes.js";
 import directionsRoutes from "../features/directions/directions.routes.js";
+
 const router: Router = Router();
 
-// This middleware runs on all API routes
 router.use(authenticate());
 
 router.get("/health", (_req, res) => {
@@ -24,16 +30,16 @@ router.get("/health", (_req, res) => {
     .json({ status: "success", message: "API router is healthy." });
 });
 
-router.use("/auth", authRoutes);
-router.use("/users", userRoutes);
-router.use("/events", eventRoutes);
-router.use("/event-categories", eventCategoryRoutes);
-router.use("/admin", adminRoutes);
-router.use("/verification-requests", verificationRequestRoutes);
-router.use("/saved-events", savedEventRoutes);
-router.use("/comments", commentRoutes);
-router.use("/maps", mapRoutes);
-router.use("/check-in", checkInRoutes);
-router.use("/directions", directionsRoutes); // ✅ 2. Use the new directions routes
+router.use("/auth", authLimiter, authRoutes);
+router.use("/maps", mapApiLimiter, mapRoutes);
+router.use("/directions", mapApiLimiter, directionsRoutes);
+router.use("/users", apiLimiter, userRoutes);
+router.use("/events", apiLimiter, eventRoutes);
+router.use("/event-categories", apiLimiter, eventCategoryRoutes);
+router.use("/admin", apiLimiter, adminRoutes);
+router.use("/verification-requests", apiLimiter, verificationRequestRoutes);
+router.use("/saved-events", apiLimiter, savedEventRoutes);
+router.use("/comments", apiLimiter, commentRoutes);
+router.use("/check-in", apiLimiter, checkInRoutes);
 
 export default router;

@@ -1,3 +1,4 @@
+//src/app/%28app%29/events/page.tsx
 "use client";
 
 import { useState } from "react"; // ✅ 1. Import useState to manage the view
