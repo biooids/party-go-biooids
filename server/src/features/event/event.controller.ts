@@ -146,6 +146,27 @@ class EventController {
       data: { events },
     });
   });
+
+  // Add this method inside the EventController class
+
+  search = asyncHandler(async (req: Request, res: Response) => {
+    const query = req.query.q as string;
+
+    if (query) {
+      const events = await eventService.searchEvents(query);
+      return res.status(200).json({
+        status: "success",
+        results: events.length,
+        data: { events },
+      });
+    } else {
+      return res.status(200).json({
+        status: "success",
+        results: 0,
+        data: { events: [] }, // Return an empty array
+      });
+    }
+  });
 }
 
 export const eventController = new EventController();

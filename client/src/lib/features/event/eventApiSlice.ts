@@ -142,6 +142,11 @@ export const eventApiSlice = apiSlice.injectEndpoints({
             ]
           : [{ type: "Events", id: "NEARBY_LIST" }],
     }),
+
+    searchEvents: builder.query<GetEventsApiResponse, string>({
+      query: (searchTerm) => `/events/search?q=${searchTerm}`,
+      providesTags: ["Events"],
+    }),
   }),
 });
 
@@ -155,4 +160,5 @@ export const {
   useDeleteEventMutation,
   useGetMyEventByIdQuery,
   useResubmitEventMutation,
+  useSearchEventsQuery,
 } = eventApiSlice;

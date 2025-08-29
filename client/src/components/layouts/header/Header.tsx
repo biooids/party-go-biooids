@@ -9,6 +9,7 @@ import { Bell, PlusSquare } from "lucide-react";
 import MobileSidebar from "../sidebar/MobileSidebar";
 import { createEventLink } from "@/lib/nav-links";
 import { SystemRole } from "@/lib/features/auth/authTypes";
+import { ThemeToggler } from "./ThemeToggler";
 
 const getGreeting = () => {
   const hour = new Date().getHours();
@@ -46,6 +47,9 @@ export default function Header() {
             {user ? `, ${user.name}` : ""}
           </p>
         </div>
+        <div className="pr-2 flex items-center gap-x-2">
+          <ThemeToggler />
+        </div>
 
         <div className="flex items-center justify-end gap-x-2">
           {canCreateEvents && (
@@ -64,9 +68,9 @@ export default function Header() {
               </Button>
             </>
           )}
-          <Button variant="ghost" size="icon" className="rounded-full">
+          {/* <Button variant="ghost" size="icon" className="rounded-full">
             <Bell className="h-5 w-5" />
-          </Button>
+          </Button> */}
           <UserNav />
         </div>
       </div>

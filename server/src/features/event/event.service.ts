@@ -12,6 +12,8 @@ import { logger } from "../../config/logger.js";
 import SavedEvent from "../savedEvent/savedEvent.model.js";
 import { mapService } from "../map/map.service.js";
 import crypto from "crypto";
+import { Types } from "mongoose";
+import { User } from "../../db/mongo.js";
 
 // Define what fields to return when populating creator info
 const creatorPopulation = {
@@ -415,6 +417,32 @@ export class EventService {
       .populate(categoryPopulation)
       .limit(50) // Add a limit to prevent returning too much data
       .lean(); // Use .lean() for faster read-only operations
+
+    return events;
+  }
+
+  public async searchEvents(query: string) {
+    const matchingUsers = await User.find({
+      username: { $regex: query, $options: "i" },
+    }).select("_id"); // We only need their IDs.
+
+    const matchingUserIds = matchingUsers.map(
+      (user: { _id: Types.ObjectId }) => user._id
+    );
+
+    const searchCondition = {
+      $or: [
+        { name: { $regex: query, $options: "i" } },
+        { creatorId: { $in: matchingUserIds } },
+      ],
+      status: EventStatus.APPROVED,
+    };
+
+    const events = await Event.find(searchCondition)
+      .populate(creatorPopulation)
+      .populate(categoryPopulation)
+      .limit(10)
+      .lean();
 
     return events;
   }

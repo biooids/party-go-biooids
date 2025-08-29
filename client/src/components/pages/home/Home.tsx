@@ -1,3 +1,4 @@
+//src/components/pages/home/Home.tsx
 import HeroSection from "./HeroSection";
 import EventsGrid from "./EventsGrid";
 import CTASection from "./CTASection";

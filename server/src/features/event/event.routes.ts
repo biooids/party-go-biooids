@@ -17,6 +17,8 @@ const requireAuth = authenticate({ required: true });
 
 // --- Public Routes ---
 router.get("/", eventController.getAll);
+router.get("/search", eventController.search);
+
 router.get(
   "/nearby",
   validate(getEventsNearbySchema),

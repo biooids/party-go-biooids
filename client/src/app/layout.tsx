@@ -7,6 +7,7 @@ import AuthInitializer from "@/components/providers/AuthInitializer";
 import SessionManager from "@/components/providers/SessionManager";
 import { AuthModal } from "@/components/pages/auth/AuthModal";
 import { Toaster } from "sonner";
+import Background from "@/components/pages/home/Background";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,6 +42,8 @@ export default function RootLayout({
               enableSystem
               disableTransitionOnChange
             >
+              {" "}
+              {/* <Background /> */}
               <Toaster position="top-center" />
               <AuthModal />
               <SessionManager />

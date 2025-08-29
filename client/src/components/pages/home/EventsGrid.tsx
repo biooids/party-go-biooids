@@ -1,11 +1,21 @@
-"use client"; // <-- Required for using React Hooks like useState
+// src/components/pages/home/EventsGrid.tsx
+
+"use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import Image from "next/image";
-import { Calendar, MapPin } from "lucide-react";
-import { cn } from "@/lib/utils"; // <-- Import cn utility for conditional classes
+import { format } from "date-fns";
+import { toast } from "sonner";
+import { useGetEventsQuery } from "@/lib/features/event/eventApiSlice";
+import { useAuth } from "@/lib/hooks/useAuth";
+import {
+  useSaveEventMutation,
+  useUnsaveEventMutation,
+} from "@/lib/features/savedEvent/savedEventApiSlice";
+import { Event } from "@/lib/features/event/eventTypes";
 
-// Import shadcn/ui components
+// UI Components
 import {
   Card,
   CardContent,
@@ -14,140 +24,180 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton"; // <-- Import the Skeleton component
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-// Define the type for an event for better type safety
-type Event = {
-  id: number;
-  title: string;
-  date: string;
-  location: string;
-  image: string;
-  price: string;
+// Icons
+import {
+  MapPin,
+  ImageIcon,
+  Bookmark,
+  BookmarkCheck,
+  AlertCircle,
+} from "lucide-react";
+
+// Helper function for creator initials
+const getInitials = (name?: string) => {
+  if (!name) return "?";
+  const words = name.split(" ").filter(Boolean);
+  if (words.length === 0) return "?";
+  if (words.length === 1) return words[0][0].toUpperCase();
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
 };
 
-const mockEvents: Event[] = [
-  {
-    id: 1,
-    title: "Neon Nights Party",
-    date: "Aug 30, 2025",
-    location: "Club Vibe, Downtown",
-    image:
-      "https://images.unsplash.com/photo-1507874457470-272b3c8d8ee2?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
-    price: "Free entry",
-  },
-  {
-    id: 2,
-    title: "Student Beer Fest",
-    date: "Sep 2, 2025",
-    location: "Campus Bar",
-    image:
-      "https://images.unsplash.com/photo-1509057199576-632a47484ece?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
-    price: "$5 wristband",
-  },
-  {
-    id: 3,
-    title: "Hip-Hop Takeover",
-    date: "Sep 5, 2025",
-    location: "Underground Lounge",
-    image:
-      "https://images.unsplash.com/photo-1506157786151-b8491531f063?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
-    price: "$10",
-  },
-  // ... other events
-  {
-    id: 4,
-    title: "Silent Disco",
-    date: "Sep 8, 2025",
-    location: "University Quad",
-    image:
-      "https://images.unsplash.com/photo-1531058020387-3be344556be6?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
-    price: "Free",
-  },
-  {
-    id: 5,
-    title: "Latin Dance Night",
-    date: "Sep 10, 2025",
-    location: "Bar Sol",
-    image:
-      "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
-    price: "$7",
-  },
-  {
-    id: 6,
-    title: "EDM Rave",
-    date: "Sep 12, 2025",
-    location: "Warehouse District",
-    image:
-      "https://images.unsplash.com/photo-1504805572947-34fad45aed93?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
-    price: "$15",
-  },
-];
-
 /**
- * A self-contained card component that manages its own loading state.
+ * A data-rich EventCard connected to the real Event type and API actions.
  */
-function EventCard({ event }: { event: Event }) {
-  const [isLoading, setIsLoading] = useState(true);
+function RealEventCard({ event }: { event: Event }) {
+  const { user } = useAuth();
+  const [saveEvent] = useSaveEventMutation();
+  const [unsaveEvent] = useUnsaveEventMutation();
+  const primaryImageUrl = event.imageUrls?.[0];
+
+  const handleSaveToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) {
+      toast.error("You must be logged in to save events.");
+      return;
+    }
+    const action = event.isSaved
+      ? unsaveEvent(event._id)
+      : saveEvent(event._id);
+    toast.promise(action.unwrap(), {
+      loading: event.isSaved ? "Unsaving..." : "Saving...",
+      success: event.isSaved ? "Event unsaved!" : "Event saved!",
+      error: (err) => err.data?.message || "An error occurred.",
+    });
+  };
 
   return (
-    <Card className="overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1">
-      <CardHeader className="p-0">
-        <div className="relative h-48 w-full">
-          {/* Skeleton is shown while the image is loading */}
-          <Skeleton className={cn("h-full w-full", !isLoading && "hidden")} />
-          <Image
-            src={event.image}
-            alt={event.title}
-            fill
-            className={cn(
-              "object-cover transition-opacity duration-300",
-              isLoading ? "opacity-0" : "opacity-100"
+    <Card className="overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1 flex flex-col">
+      <Link
+        href={`/events/${event._id}`}
+        className="group flex flex-col flex-1"
+      >
+        <CardHeader className="p-0">
+          <div className="relative h-48 w-full bg-muted">
+            {primaryImageUrl ? (
+              <Image
+                src={primaryImageUrl}
+                alt={event.name}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center">
+                <ImageIcon className="h-12 w-12 text-muted-foreground/30" />
+              </div>
             )}
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            onLoad={() => setIsLoading(false)}
-          />
-        </div>
-      </CardHeader>
-      <CardContent className="p-5">
-        {isLoading ? (
-          <div className="space-y-2">
-            <Skeleton className="h-6 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-            <Skeleton className="h-4 w-2/3" />
-          </div>
-        ) : (
-          <>
-            <CardTitle className="text-xl mb-2">{event.title}</CardTitle>
-            <div className="space-y-1 text-sm text-muted-foreground">
-              <div className="flex items-center">
-                <Calendar className="w-4 h-4 mr-2" />
-                {event.date}
-              </div>
-              <div className="flex items-center">
-                <MapPin className="w-4 h-4 mr-2" />
-                {event.location}
-              </div>
+            {user && (
+              <Button
+                variant="secondary"
+                size="icon"
+                className="absolute top-2 left-2 h-8 w-8 rounded-full z-10"
+                onClick={handleSaveToggle}
+              >
+                {event.isSaved ? (
+                  <BookmarkCheck className="h-4 w-4 text-primary" />
+                ) : (
+                  <Bookmark className="h-4 w-4" />
+                )}
+                <span className="sr-only">
+                  {event.isSaved ? "Unsave event" : "Save event"}
+                </span>
+              </Button>
+            )}
+            <div className="absolute top-2 right-2">
+              <Badge>
+                {event.price > 0 ? `$${event.price.toFixed(2)}` : "Free"}
+              </Badge>
             </div>
-          </>
-        )}
-      </CardContent>
-      <CardFooter className="flex items-center justify-between p-5 pt-0">
-        {isLoading ? (
-          <Skeleton className="h-6 w-1/4" />
-        ) : (
-          <span className="text-lg font-bold text-primary">{event.price}</span>
-        )}
-        <Button disabled={isLoading}>View</Button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 flex-1">
+          <p className="text-sm text-primary font-semibold">
+            {format(new Date(event.date), "EEE, MMM d 'at' h:mm a")}
+          </p>
+          <CardTitle className="mt-1 text-lg group-hover:underline">
+            {event.name}
+          </CardTitle>
+          <p className="mt-2 flex items-center text-sm text-muted-foreground">
+            <MapPin className="mr-1.5 h-4 w-4 shrink-0" />
+            {event.address}
+          </p>
+        </CardContent>
+      </Link>
+      <CardFooter className="p-4 pt-0 flex justify-between items-center">
+        <Link
+          href={`/profile/${event.creatorId.username}`}
+          className="flex items-center gap-2 group/author"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Avatar className="h-6 w-6">
+            <AvatarImage src={event.creatorId.profileImage ?? ""} />
+            <AvatarFallback>{getInitials(event.creatorId.name)}</AvatarFallback>
+          </Avatar>
+          <span className="text-xs text-muted-foreground group-hover/author:underline">
+            {event.creatorId.name}
+          </span>
+        </Link>
+        <Badge variant="secondary">{event.categoryId.name}</Badge>
       </CardFooter>
     </Card>
   );
 }
 
 /**
- * The main grid component that renders the list of event cards.
+ * The main grid component that now fetches and displays real events.
  */
 export default function EventsGrid() {
+  const { data, isLoading, isError } = useGetEventsQuery({ page: 1, limit: 6 });
+  const events = data?.data.events || [];
+
+  if (isLoading) {
+    return (
+      <section className="py-20 bg-background border-t border-border">
+        <div className="container mx-auto px-4 md:px-6">
+          <h2 className="text-3xl md:text-4xl font-extrabold mb-10 text-center">
+            Upcoming Events 🎶
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="flex flex-col space-y-3">
+                <Skeleton className="h-48 w-full rounded-xl" />
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (isError) {
+    return (
+      <section className="py-20 bg-background border-t border-border">
+        <div className="container mx-auto px-4 md:px-6">
+          <Alert variant="destructive" className="max-w-lg mx-auto">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>
+              Could not fetch events at this time. Please try refreshing the
+              page.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="py-20 bg-background border-t border-border">
       <div className="container mx-auto px-4 md:px-6">
@@ -155,11 +205,20 @@ export default function EventsGrid() {
           Upcoming Events 🎶
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {mockEvents.map((event) => (
-            <EventCard key={event.id} event={event} />
-          ))}
-        </div>
+        {events.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {events.map((event) => (
+              <RealEventCard key={event._id} event={event} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-10">
+            <h3 className="text-lg font-semibold">No Upcoming Events</h3>
+            <p className="text-muted-foreground">
+              Check back soon for new listings!
+            </p>
+          </div>
+        )}
       </div>
     </section>
   );
