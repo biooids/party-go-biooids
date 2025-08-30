@@ -159,8 +159,6 @@ const SignUpForm = () => {
               )}
             </div>
 
-            <SocialLogin />
-
             {/* Email */}
             <div>
               <Label htmlFor="email">Email Address</Label>
@@ -260,7 +258,7 @@ const SignUpForm = () => {
             />
           </CardContent>
           <CardFooter>
-            <Button type="submit" disabled={isLoading} className="w-full">
+            <Button type="submit" disabled={isLoading} className="w-full mt-5">
               {isLoading ? (
                 <Loader2 className="animate-spin" />
               ) : (
@@ -270,6 +268,7 @@ const SignUpForm = () => {
           </CardFooter>
         </form>
       </Card>
+      <SocialLogin />
     </div>
   );
 };

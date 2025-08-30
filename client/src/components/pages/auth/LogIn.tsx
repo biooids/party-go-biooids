@@ -88,7 +88,6 @@ const LoginForm = () => {
                 <AlertDescription>{formError}</AlertDescription>
               </Alert>
             )}
-            <SocialLogin />
             <div>
               <Label htmlFor="email">Email Address</Label>
               <Input
@@ -131,11 +130,12 @@ const LoginForm = () => {
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" disabled={isLoading} className="w-full">
+            <Button type="submit" disabled={isLoading} className="w-full mt-5">
               {isLoading ? <Loader2 className="animate-spin" /> : "Log In"}
             </Button>
           </CardFooter>
         </form>
+        <SocialLogin />
       </Card>
     </div>
   );
