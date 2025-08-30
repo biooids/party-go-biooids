@@ -84,7 +84,6 @@ export default function EventsPage() {
         </TabsList>
 
         <TabsContent value="map" className="flex-1">
-          {/* ✅ 4. Pass the full selectedPlace object to the map */}
           <DiscoveryMap
             key={JSON.stringify(selectedPlace)}
             initialViewState={initialMapViewState}

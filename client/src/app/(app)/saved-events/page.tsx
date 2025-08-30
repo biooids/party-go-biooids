@@ -11,14 +11,12 @@ export default function SavedEventsPage() {
   const { token } = useAuth();
   const router = useRouter();
 
-  // Protect this route by redirecting if the user is not logged in
   useEffect(() => {
     if (!token) {
-      router.push("/login");
+      router.push("/auth/login");
     }
   }, [token, router]);
 
-  // Render nothing while redirecting to prevent a flash of content
   if (!token) {
     return null;
   }
