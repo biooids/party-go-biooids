@@ -37,7 +37,7 @@ export default function Header() {
             <MobileSidebar />
           </div>
           <Link href="/" className="hidden md:flex items-center space-x-2">
-            <span className="font-bold">YourApp</span>
+            <span className="font-bold">PartyGo</span>
           </Link>
         </div>
 

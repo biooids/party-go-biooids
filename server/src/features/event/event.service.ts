@@ -397,26 +397,41 @@ export class EventService {
   public async findEventsNearby(
     latitude: number,
     longitude: number,
-    radiusInMeters: number
+    radiusInMeters: number,
+    categoryId?: string
   ) {
-    const events = await Event.find({
-      // Only search for events that are approved and visible to the public.
+    // Define a threshold for what we consider "unlimited". 50,000km is larger than Earth's circumference.
+    const UNLIMITED_RADIUS_THRESHOLD = 50000000;
+
+    let filter: any = {
       status: EventStatus.APPROVED,
-      location: {
+    };
+
+    // If a specific categoryId is provided, add it to the filter.
+    if (categoryId && categoryId !== "all") {
+      filter.categoryId = categoryId;
+    }
+
+    // ✅ FIX: Check if the radius is effectively unlimited.
+    if (radiusInMeters < UNLIMITED_RADIUS_THRESHOLD) {
+      filter.location = {
         $near: {
           $geometry: {
             type: "Point",
-            coordinates: [longitude, latitude], // MongoDB expects [longitude, latitude]
+            coordinates: [longitude, latitude],
           },
-          // The maximum distance from the center point in meters.
           $maxDistance: radiusInMeters,
         },
-      },
-    })
+      };
+    }
+    // If the radius is "unlimited", we simply don't add the location filter,
+    // thereby searching all events that match the other criteria (status, category).
+
+    const events = await Event.find(filter)
       .populate(creatorPopulation)
       .populate(categoryPopulation)
-      .limit(50) // Add a limit to prevent returning too much data
-      .lean(); // Use .lean() for faster read-only operations
+      .limit(50) // Keep the limit to ensure good performance
+      .lean();
 
     return events;
   }

@@ -15,12 +15,11 @@ export default function Sidebar() {
     <aside className="hidden h-full w-64 flex-col border-r bg-background shrink-0 md:flex">
       <div className="flex h-16 items-center border-b px-6">
         <Link href="/" className="flex items-center gap-2 font-semibold">
-          <span className="">YourApp</span>
+          <span className="">PartyGo</span>
         </Link>
       </div>
       <div className="flex-1 overflow-y-auto">
         <nav className="grid items-start gap-1 p-4 text-sm font-medium">
-          {/* ✅ FIXED: This filter logic now correctly checks for both roles and verification status. */}
           {mainNavLinks
             .filter((link) => {
               const hasRolePermission =

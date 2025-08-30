@@ -131,13 +131,15 @@ class EventController {
   /**
    * ✅ ADDED: Controller to find events based on geographic location.
    */
-  getNearby = asyncHandler(async (req: Request, res: Response) => {
-    const { lat, lng, radius } = req.query;
+  // In src/features/event/event.controller.ts
 
+  getNearby = asyncHandler(async (req: Request, res: Response) => {
+    const { lat, lng, radius, categoryId } = req.query;
     const events = await eventService.findEventsNearby(
       Number(lat),
       Number(lng),
-      Number(radius)
+      Number(radius),
+      categoryId as string | undefined
     );
 
     res.status(200).json({

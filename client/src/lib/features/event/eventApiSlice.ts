@@ -126,11 +126,20 @@ export const eventApiSlice = apiSlice.injectEndpoints({
      */
     getNearbyEvents: builder.query<
       GetNearbyEventsApiResponse,
-      { lat: number; lng: number; radius?: number }
+      { lat: number; lng: number; radius?: number; categoryId?: string }
     >({
-      query: (
-        { lat, lng, radius = 10000 } // Default radius of 10km
-      ) => `/events/nearby?lat=${lat}&lng=${lng}&radius=${radius}`,
+      query: ({ lat, lng, radius = 10000, categoryId }) => {
+        const params: Record<string, string> = {
+          lat: String(lat),
+          lng: String(lng),
+          radius: String(radius),
+        };
+        if (categoryId && categoryId !== "all") {
+          params.categoryId = categoryId;
+        }
+        const queryString = new URLSearchParams(params).toString();
+        return `/events/nearby?${queryString}`;
+      },
       providesTags: (result) =>
         result
           ? [

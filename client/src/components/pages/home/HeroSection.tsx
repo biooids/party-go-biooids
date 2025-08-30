@@ -8,7 +8,6 @@ import { Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useSearchEventsQuery } from "@/lib/features/event/eventApiSlice";
 import { useDebounce } from "@/lib/hooks/useDebounce";
-import { Event } from "@/lib/features/event/eventTypes";
 
 export default function HeroSection() {
   const router = useRouter();
@@ -18,7 +17,7 @@ export default function HeroSection() {
   const { data: searchData, isFetching: isSearching } = useSearchEventsQuery(
     debouncedSearchQuery,
     {
-      skip: debouncedSearchQuery.length < 2, // Only search if query is long enough
+      skip: debouncedSearchQuery.length < 2,
     }
   );
 
@@ -71,7 +70,6 @@ export default function HeroSection() {
                       </div>
                       <div>
                         <p className="font-semibold text-sm">{event.name}</p>
-                        {/* ✅ ADDED: Show the creator's username for context */}
                         <p className="text-xs text-muted-foreground">
                           by @{event.creatorId.username}
                         </p>
