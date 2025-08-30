@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     title: "PartyGo - Your Campus Nightlife Guide",
     description:
       "Discover the best student parties, bar deals, and events happening around campus.",
-    url: "https://your-production-url.com", // Replace with your actual production URL
+    url: "https://party-go-biooids.vercel.app/", // Replace with your actual production URL
     siteName: "PartyGo",
     images: [
       {
