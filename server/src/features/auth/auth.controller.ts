@@ -13,7 +13,7 @@ const setRefreshTokenCookie = (
   res.cookie(config.cookies.refreshTokenName, refreshToken, {
     httpOnly: true,
     secure: config.nodeEnv === "production",
-    sameSite: "strict",
+    sameSite: "none",
     expires: expiresAt,
   });
 };
