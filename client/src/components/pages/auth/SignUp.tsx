@@ -267,8 +267,8 @@ const SignUpForm = () => {
             </Button>
           </CardFooter>
         </form>
+        <SocialLogin />
       </Card>
-      <SocialLogin />
     </div>
   );
 };
