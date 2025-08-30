@@ -32,7 +32,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-// import SocialLogin from "./SocialLogin"; // Placeholder for OAuth buttons
+import SocialLogin from "./SocialLogin";
 
 // --- Helper Components ---
 const PasswordStrengthIndicator = ({ score }: { score: number }) => {
@@ -158,6 +158,9 @@ const SignUpForm = () => {
                 </p>
               )}
             </div>
+
+            <SocialLogin />
+
             {/* Email */}
             <div>
               <Label htmlFor="email">Email Address</Label>

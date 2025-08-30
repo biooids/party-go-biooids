@@ -26,8 +26,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-// import SocialLogin from "./SocialLogin"; // Placeholder for OAuth buttons
-
+import SocialLogin from "./SocialLogin";
 // --- Main Component ---
 const LoginForm = () => {
   const router = useRouter();
@@ -89,7 +88,7 @@ const LoginForm = () => {
                 <AlertDescription>{formError}</AlertDescription>
               </Alert>
             )}
-            {/* <SocialLogin /> */}
+            <SocialLogin />
             <div>
               <Label htmlFor="email">Email Address</Label>
               <Input

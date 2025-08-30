@@ -244,7 +244,7 @@ export default function EditEventForm({ event }: EditEventFormProps) {
         loading: "Saving changes...",
         success: () => {
           router.push(`/my-events/${event._id}`);
-          router.refresh(); // Refresh server components to get new data
+          router.refresh();
           return "Event updated successfully!";
         },
         error: (err) => err.data?.message || "Failed to update event.",

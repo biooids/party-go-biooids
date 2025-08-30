@@ -2,9 +2,9 @@
 
 "use client";
 
-import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { GitBranchPlus } from "lucide-react";
+import { use, useState } from "react";
 
 // A simple Google SVG icon component
 const GoogleIcon = () => (
@@ -17,11 +17,10 @@ const GoogleIcon = () => (
 );
 
 export default function SocialLogin() {
-  // We define a default callbackUrl in case the user lands here directly
-  const handleSignIn = (provider: "google" | "github") => {
-    signIn(provider, { callbackUrl: "/" });
+  const [providerClicked, setProviderClicked] = useState("");
+  const handleSignIn = (provider: string) => {
+    setProviderClicked(provider);
   };
-
   return (
     <div className="space-y-4 ">
       {/* Divider */}
@@ -39,8 +38,8 @@ export default function SocialLogin() {
       <div className="grid grid-cols-2 gap-4 ">
         <Button
           variant="outline"
+          type="button"
           onClick={() => handleSignIn("github")}
-          type="button" // <-- The crucial fix
         >
           <GitBranchPlus className="mr-2 h-4 w-4" />
           GitHub
@@ -54,6 +53,11 @@ export default function SocialLogin() {
           Google
         </Button>
       </div>
+      <p>
+        {providerClicked
+          ? "Sign in with " + providerClicked + "But not yet implemented"
+          : ""}
+      </p>
     </div>
   );
 }
