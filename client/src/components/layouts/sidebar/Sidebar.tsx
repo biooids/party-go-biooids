@@ -12,7 +12,7 @@ export default function Sidebar() {
   const { user } = useAuth();
 
   return (
-    <aside className="hidden h-full w-64 flex-col border-r bg-background shrink-0 md:flex">
+    <aside className="hidden h-full w-64 flex-col border-r bg-background shrink-0 md:flex  top-0 sticky">
       <div className="flex h-16 items-center border-b px-6">
         <Link href="/" className="flex items-center gap-2 font-semibold">
           <span className="">PartyGo</span>
