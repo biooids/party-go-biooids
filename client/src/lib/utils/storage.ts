@@ -8,8 +8,13 @@ const storage = {
   /**
    * Saves a string key-value pair to localStorage.
    */
-  setItem: async (key: string, value: string): Promise<void> => {
-    return Promise.resolve(localStorage.setItem(key, value));
+  setItem: (key: string, value: string): Promise<void> => {
+    return new Promise((resolve) => {
+      if (typeof window !== "undefined") {
+        localStorage.setItem(key, value);
+      }
+      resolve();
+    });
   },
 
   /**
