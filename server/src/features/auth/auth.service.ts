@@ -1,5 +1,3 @@
-// src/features/auth/auth.service.ts
-
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { User, RefreshToken } from "../../db/mongo.js";
@@ -29,41 +27,57 @@ const sanitizeUser = (user: any): Omit<UserType, "hashedPassword"> => {
 };
 
 export class AuthService {
+  /**
+   * ✅ UPDATED: Handles user registration with only email and password.
+   * A unique username and a matching default name are generated automatically.
+   */
   public async registerUser(input: SignUpInputDto): Promise<{
     user: Omit<UserType, "hashedPassword">;
     tokens: AuthTokens;
   }> {
-    const { email, username, password, name } = input;
+    const { email, password } = input;
 
+    // 1. Check if a user with the given email already exists.
     const existingUser = await User.findOne({
-      $or: [
-        { email: email.toLowerCase() },
-        { username: username.toLowerCase() },
-      ],
+      email: email.toLowerCase(),
     }).lean();
 
     if (existingUser) {
-      if (existingUser.email === email.toLowerCase()) {
-        throw createHttpError(
-          409,
-          "An account with this email already exists."
-        );
-      }
-      if (existingUser.username === username.toLowerCase()) {
-        throw createHttpError(409, "This username is already taken.");
-      }
+      throw createHttpError(409, "An account with this email already exists.");
     }
 
+    // 2. Generate a unique default username from the email prefix.
+    const baseUsername = email
+      .split("@")[0]
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .slice(0, 15); // Ensure it's not too long
+
+    let finalUsername = baseUsername;
+    const userWithSameUsername = await User.findOne({
+      username: baseUsername,
+    }).lean();
+
+    // If the base username is taken, append a short random suffix.
+    if (userWithSameUsername) {
+      const uniqueSuffix = crypto.randomBytes(3).toString("hex"); // 6 random characters
+      finalUsername = `${baseUsername}${uniqueSuffix}`;
+    }
+
+    // Use the generated username as the default display name.
+    const defaultName = finalUsername;
+
+    // 3. Hash the password and create the new user.
     const hashedPassword = await bcrypt.hash(password, 10);
     const userDoc = await User.create({
-      email,
-      username,
+      email: email.toLowerCase(),
       hashedPassword,
-      name,
+      username: finalUsername,
+      name: defaultName,
     });
     const user = userDoc.toObject();
     logger.info({ userId: user._id }, "New user created successfully.");
 
+    // 4. Generate access and refresh tokens for the new user.
     const accessToken = generateAccessToken({
       id: user._id.toString(),
       systemRole: user.systemRole,
@@ -90,11 +104,8 @@ export class AuthService {
       throw createHttpError(404, "Invalid email or password.");
     }
 
-    //Ban check at the start of the login process.
     if (user.isBanned) {
-      // Check if the ban is temporary and has expired.
       if (user.bannedUntil && user.bannedUntil < new Date()) {
-        // If the ban has expired, un-ban the user and allow login to proceed.
         await User.findByIdAndUpdate(user._id, {
           isBanned: false,
           banReason: null,
@@ -109,7 +120,10 @@ export class AuthService {
     }
 
     if (!user.hashedPassword) {
-      throw createHttpError(400, "This account uses a social provider.");
+      throw createHttpError(
+        400,
+        "This account may use a social provider to log in."
+      );
     }
 
     const isPasswordCorrect = await bcrypt.compare(
@@ -147,7 +161,6 @@ export class AuthService {
       input.incomingRefreshToken
     );
 
-    // We can directly use the ID from the validated token.
     const newAccessToken = generateAccessToken({
       id: decodedOldToken.id,
       systemRole: decodedOldToken.systemRole,
@@ -156,7 +169,6 @@ export class AuthService {
     const { token: newRefreshToken, expiresAt: newRefreshTokenExpiresAt } =
       await generateAndStoreRefreshToken(decodedOldToken.id);
 
-    // Revoke the old token *after* generating the new one.
     await this.revokeTokenByJti(decodedOldToken.jti);
 
     return { newAccessToken, newRefreshToken, newRefreshTokenExpiresAt };
@@ -206,7 +218,7 @@ export class AuthService {
       const username = `${baseUsername}_${uniqueSuffix}`;
 
       const newUserDoc = await User.create({
-        email: profile.email,
+        email: profile.email.toLowerCase(),
         name: profile.name ?? "New User",
         username: username,
         ...(profile.image && { profileImage: profile.image }),

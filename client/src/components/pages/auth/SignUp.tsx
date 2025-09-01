@@ -99,17 +99,15 @@ const SignUpForm = () => {
   const onSubmit: SubmitHandler<SignUpFormValues> = async (data) => {
     setFormError(null);
     try {
+      // ✅ CHANGED: We now only send the email and password to the API,
+      // as required by the updated `SignUpInputDto`.
       await signup({
-        name: data.name,
-        username: data.username,
         email: data.email,
         password: data.password,
       }).unwrap();
-      // On success, RTK Query's onQueryStarted handles setting credentials.
-      // We can now navigate the user to the home page.
+
       router.push("/");
     } catch (err: any) {
-      // Extract the error message from the RTK Query error response.
       const errorMessage = err.data?.message || "An unexpected error occurred.";
       setFormError(errorMessage);
     }
@@ -137,27 +135,8 @@ const SignUpForm = () => {
                 <AlertDescription>{formError}</AlertDescription>
               </Alert>
             )}
-            {/* Form Fields: Name, Username, Email, Password, Confirm Password, Accept Terms */}
-            {/* Name */}
-            <div>
-              <Label htmlFor="name">Full Name</Label>
-              <Input id="name" {...register("name")} />
-              {errors.name && (
-                <p className="text-destructive text-xs mt-1">
-                  {errors.name.message}
-                </p>
-              )}
-            </div>
-            {/* Username */}
-            <div>
-              <Label htmlFor="username">Username</Label>
-              <Input id="username" {...register("username")} />
-              {errors.username && (
-                <p className="text-destructive text-xs mt-1">
-                  {errors.username.message}
-                </p>
-              )}
-            </div>
+
+            {/* ✅ REMOVED: Name and Username fields are gone for a simpler process. */}
 
             {/* Email */}
             <div>
@@ -238,15 +217,17 @@ const SignUpForm = () => {
                       checked={field.value}
                       onCheckedChange={field.onChange}
                     />
-                    <Label htmlFor="acceptTerms">
-                      I accept the{" "}
-                      <Link
-                        href="/terms"
-                        className="text-primary hover:underline"
-                      >
-                        Terms of Service
-                      </Link>
-                    </Label>
+                    <div className="grid gap-1.5 leading-none">
+                      <Label htmlFor="acceptTerms">
+                        I accept the{" "}
+                        <Link
+                          href="/terms"
+                          className="text-primary hover:underline"
+                        >
+                          Terms of Service
+                        </Link>
+                      </Label>
+                    </div>
                   </div>
                   {error && (
                     <p className="text-destructive text-xs mt-1">

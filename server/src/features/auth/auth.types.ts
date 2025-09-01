@@ -1,4 +1,4 @@
-// src/features/auth/auth.types.ts
+//src/features/auth/auth.types.ts
 
 import { JwtPayload as OriginalJwtPayload } from "jsonwebtoken";
 import { SystemRole } from "../../types/user.types.js";
@@ -16,15 +16,15 @@ export interface DecodedRefreshTokenPayload extends OriginalJwtPayload {
   id: string;
   jti: string;
   type: "refresh";
-  systemRole: SystemRole;
+  systemRole: SystemRole; // This field might not be in the actual token but is useful for type consistency.
 }
 
 // --- Service Input DTOs ---
+
+// ✅ UPDATED: This DTO is now simpler, only requiring email and password.
 export interface SignUpInputDto {
   email: string;
-  username: string;
   password: string;
-  name: string;
 }
 
 export interface LoginInputDto {

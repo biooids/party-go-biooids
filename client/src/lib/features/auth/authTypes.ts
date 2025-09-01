@@ -1,5 +1,4 @@
-// src/lib/features/auth/authTypes.ts
-
+//src/lib/features/auth/authTypes.ts
 export enum SystemRole {
   USER = "USER",
   ADMIN = "ADMIN",
@@ -9,19 +8,17 @@ export enum SystemRole {
 // --- DTOs for API requests ---
 
 export interface LoginInputDto {
-  email: string; // ✅ CHANGED: from phone
+  email: string;
   password: string;
 }
 
+// ✅ CORRECT: This remains simple because 'acceptTerms' is not sent to the API.
 export interface SignUpInputDto {
-  name: string; // ✅ ADDED
-  username: string;
-  email: string; // ✅ CHANGED: from phone
+  email: string;
   password: string;
 }
 
 // --- The user object shape from the backend ---
-
 export interface SanitizedUserDto {
   _id: string;
   name: string;
@@ -39,7 +36,6 @@ export interface SanitizedUserDto {
 }
 
 // --- API Response Shape ---
-
 export interface LoginApiResponse {
   status: string;
   message: string;
