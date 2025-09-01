@@ -71,6 +71,16 @@ export const authApiSlice = apiSlice.injectEndpoints({
         method: "POST",
       }),
     }),
+    handleOAuth: builder.mutation<
+      LoginApiResponse,
+      { provider: string; code: string }
+    >({
+      query: (credentials) => ({
+        url: "/auth/oauth",
+        method: "POST",
+        body: credentials,
+      }),
+    }),
   }),
 });
 
@@ -79,4 +89,5 @@ export const {
   useSignupMutation,
   useLogoutMutation,
   useLazyRefreshQuery,
+  useHandleOAuthMutation,
 } = authApiSlice;

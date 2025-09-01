@@ -27,6 +27,9 @@ const envSchema = z.object({
     .string()
     .min(1, "CLOUDINARY_API_SECRET is required."),
   MAPBOX_API_KEY: z.string().min(1, "MAPBOX_API_KEY is required."),
+  AUTH_REDIRECT_URI: z.string().url(),
+  GOOGLE_CLIENT_ID: z.string().min(1),
+  GOOGLE_CLIENT_SECRET: z.string().min(1),
 });
 
 /**
@@ -58,6 +61,13 @@ function createConfig() {
       },
       cookies: {
         refreshTokenName: "jid",
+      },
+      oauth: {
+        redirectUri: parsedEnv.AUTH_REDIRECT_URI,
+        google: {
+          clientId: parsedEnv.GOOGLE_CLIENT_ID,
+          clientSecret: parsedEnv.GOOGLE_CLIENT_SECRET,
+        },
       },
     };
   } catch (error) {

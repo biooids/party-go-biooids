@@ -1,10 +1,8 @@
-//src/components/pages/auth/SocialLogin.tsx
+// src/components/pages/auth/SocialLogin.tsx
 
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { GitBranchPlus } from "lucide-react";
-import { use, useState } from "react";
 
 // A simple Google SVG icon component
 const GoogleIcon = () => (
@@ -17,12 +15,23 @@ const GoogleIcon = () => (
 );
 
 export default function SocialLogin() {
-  const [providerClicked, setProviderClicked] = useState("");
-  const handleSignIn = (provider: string) => {
-    setProviderClicked(provider);
+  const handleSignIn = () => {
+    const redirectUri = process.env.NEXT_PUBLIC_AUTH_REDIRECT_URI;
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+
+    // Build the Google OAuth URL with the correct parameters
+    const googleUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+    googleUrl.searchParams.set("client_id", clientId!);
+    googleUrl.searchParams.set("redirect_uri", redirectUri!);
+    googleUrl.searchParams.set("response_type", "code");
+    googleUrl.searchParams.set("scope", "openid profile email");
+
+    // Redirect the user's browser to the Google sign-in page
+    window.location.href = googleUrl.toString();
   };
+
   return (
-    <div className="space-y-4 ">
+    <div className="space-y-4">
       {/* Divider */}
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
@@ -34,30 +43,18 @@ export default function SocialLogin() {
           </span>
         </div>
       </div>
-      {/* OAuth Buttons */}
-      <div className="grid grid-cols-2 gap-4 ">
-        <Button
-          variant="outline"
-          type="button"
-          onClick={() => handleSignIn("github")}
-        >
-          <GitBranchPlus className="mr-2 h-4 w-4" />
-          GitHub
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => handleSignIn("google")}
-          type="button" // <-- The crucial fix
-        >
-          <GoogleIcon />
-          Google
-        </Button>
-      </div>
-      <p>
-        {providerClicked
-          ? "Sign in with " + providerClicked + "But not yet implemented"
-          : ""}
-      </p>
+
+      {/* OAuth Button */}
+      {/* ✅ UPDATED: The UI now only shows a single, full-width Google button */}
+      <Button
+        variant="outline"
+        type="button"
+        onClick={handleSignIn}
+        className="w-full"
+      >
+        <GoogleIcon />
+        Google
+      </Button>
     </div>
   );
 }

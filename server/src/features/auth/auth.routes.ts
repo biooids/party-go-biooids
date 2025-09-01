@@ -19,6 +19,7 @@ router.post(
 router.post("/login", authLimiter, validate(loginSchema), authController.login);
 router.post("/refresh", authController.refreshAccessToken);
 router.post("/oauth", authLimiter, authController.handleOAuth);
+router.post("/oauth", authLimiter, authController.handleOAuth);
 
 // --- Protected Routes ---
 const requireAuth = authenticate({ required: true });

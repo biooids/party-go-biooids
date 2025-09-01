@@ -16,6 +16,8 @@ import {
   AuthTokens,
   LogoutInputDto,
 } from "./auth.types.js";
+import axios from "axios";
+import { config } from "../../config/index.js";
 
 const sanitizeUser = (user: any): Omit<UserType, "hashedPassword"> => {
   const userObject = user._doc || user;
@@ -256,6 +258,39 @@ export class AuthService {
       { revoked: true }
     );
     logger.info({ userId }, `Revoked all active sessions.`);
+  }
+
+  // ✅ NEW: Handles the entire Google Sign-In flow
+  public async handleGoogleSignIn(code: string) {
+    // 1. Exchange the code for an access token
+    const { data: tokenData } = await axios.post(
+      "https://oauth2.googleapis.com/token",
+      null,
+      {
+        params: {
+          code,
+          client_id: config.oauth.google.clientId,
+          client_secret: config.oauth.google.clientSecret,
+          redirect_uri: config.oauth.redirectUri,
+          grant_type: "authorization_code",
+        },
+      }
+    );
+
+    // 2. Use the access token to get the user's profile
+    const { data: profile } = await axios.get(
+      "https://www.googleapis.com/oauth2/v2/userinfo",
+      {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      }
+    );
+
+    // 3. Find or create the user and generate our app's tokens
+    return this.findOrCreateOAuthUser({
+      email: profile.email,
+      name: profile.name,
+      image: profile.picture,
+    });
   }
 }
 

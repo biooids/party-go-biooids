@@ -4,6 +4,7 @@ import { Request, Response } from "express";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { authService } from "./auth.service.js";
 import { config } from "../../config/index.js";
+import { createHttpError } from "../../utils/error.factory.js";
 
 const setRefreshTokenCookie = (
   res: Response,
@@ -68,8 +69,23 @@ class AuthController {
       .json({ status: "success", message: "Logged out successfully." });
   });
 
+  // ✅ REPLACED: This method now handles different OAuth providers.
   handleOAuth = asyncHandler(async (req: Request, res: Response) => {
-    const { user, tokens } = await authService.findOrCreateOAuthUser(req.body);
+    const { provider, code } = req.body;
+
+    if (!provider || !code) {
+      throw createHttpError(400, "Provider and code are required.");
+    }
+
+    let result;
+    if (provider === "google") {
+      result = await authService.handleGoogleSignIn(code);
+    } else {
+      throw createHttpError(400, "Unsupported OAuth provider.");
+    }
+
+    const { user, tokens } = result;
+
     setRefreshTokenCookie(
       res,
       tokens.refreshToken,
