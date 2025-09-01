@@ -1,3 +1,4 @@
+//src/db/mongo.ts
 import mongoose from "mongoose";
 import { config } from "../config/index.js";
 import { logger } from "../config/logger.js";
@@ -18,7 +19,6 @@ mongoose.connection.on("disconnected", () => {
 export { default as User } from "./models/user.model.js";
 export { default as RefreshToken } from "./models/refreshToken.model.js";
 
-// ✅ FIXED: These models are now correctly imported from their respective feature folders.
 export { default as Event } from "../features/event/event.model.js";
 export { default as EventCategory } from "../features/eventCategory/eventCategory.model.js";
 export { default as Comment } from "../features/comment/comment.model.js";

@@ -4,7 +4,6 @@ import http from "http";
 import app from "./app.js";
 import { config } from "./config/index.js";
 import { logger } from "./config/logger.js";
-// ✅ FIXED: Import database connection functions
 import { connectDB, disconnectDB } from "./db/mongo.js";
 
 const PORT = config.port;

@@ -17,7 +17,7 @@ router.post(
   authController.signup
 );
 router.post("/login", authLimiter, validate(loginSchema), authController.login);
-router.post("/refresh", authLimiter, authController.refreshAccessToken);
+router.post("/refresh", authController.refreshAccessToken);
 router.post("/oauth", authLimiter, authController.handleOAuth);
 
 // --- Protected Routes ---

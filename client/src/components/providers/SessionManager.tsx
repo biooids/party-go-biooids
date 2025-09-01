@@ -1,9 +1,11 @@
+//script/client/src/components/providers/SessionManager.tsx
+
 "use client";
 
 import { useEffect, useRef } from "react";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useLazyRefreshQuery } from "@/lib/features/auth/authApiSlice";
-import { useRouter } from "next/navigation"; // ✅ 1. Import the router
+import { useRouter } from "next/navigation";
 
 /**
  * A headless client component that manages the user's session.
