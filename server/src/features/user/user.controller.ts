@@ -121,6 +121,38 @@ class UserController {
     res.clearCookie(config.cookies.refreshTokenName);
     res.status(204).send();
   });
+
+  followUser = asyncHandler(async (req: Request, res: Response) => {
+    const followerId = req.user!.id;
+    const { username } = req.params;
+    await userService.followUser(followerId, username);
+    res.status(200).json({ status: "success", message: "User followed." });
+  });
+
+  unfollowUser = asyncHandler(async (req: Request, res: Response) => {
+    const followerId = req.user!.id;
+    const { username } = req.params;
+    await userService.unfollowUser(followerId, username);
+    res.status(200).json({ status: "success", message: "User unfollowed." });
+  });
+
+  getFollowers = asyncHandler(async (req: Request, res: Response) => {
+    const { username } = req.params;
+    const users = await userService.getFollowers(username);
+    res.status(200).json({
+      status: "success",
+      data: { users },
+    });
+  });
+
+  getFollowing = asyncHandler(async (req: Request, res: Response) => {
+    const { username } = req.params;
+    const users = await userService.getFollowing(username);
+    res.status(200).json({
+      status: "success",
+      data: { users },
+    });
+  });
 }
 
 export const userController = new UserController();

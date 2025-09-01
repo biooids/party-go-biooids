@@ -6,9 +6,17 @@ import type {
   UserProfileApiResponse,
   ChangePasswordInputDto,
   PublicProfileApiResponse,
+  FollowUser,
 } from "./userTypes";
 import { SanitizedUserDto } from "../auth/authTypes";
 import { RootState } from "@/lib/store";
+
+interface FollowsApiResponse {
+  status: string;
+  data: {
+    users: FollowUser[];
+  };
+}
 
 export const userApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
@@ -93,6 +101,20 @@ export const userApiSlice = apiSlice.injectEndpoints({
         { type: "User", id: username },
       ],
     }),
+
+    getFollowers: builder.query<FollowsApiResponse, string>({
+      query: (username) => `/users/${username}/followers`,
+      providesTags: (result, error, username) => [
+        { type: "User", id: username },
+      ],
+    }),
+
+    getFollowing: builder.query<FollowsApiResponse, string>({
+      query: (username) => `/users/${username}/following`,
+      providesTags: (result, error, username) => [
+        { type: "User", id: username },
+      ],
+    }),
   }),
 });
 
@@ -105,4 +127,6 @@ export const {
   useDeleteAccountMutation,
   useFollowUserMutation,
   useUnfollowUserMutation,
+  useGetFollowersQuery,
+  useGetFollowingQuery,
 } = userApiSlice;

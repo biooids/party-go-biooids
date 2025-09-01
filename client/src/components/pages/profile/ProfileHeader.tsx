@@ -35,7 +35,6 @@ export default function ProfileHeader({
   onEdit,
 }: ProfileHeaderProps) {
   const [isBannerLoading, setBannerLoading] = useState(true);
-  console.log("User object in ProfileHeader:", user);
 
   return (
     <Card className="overflow-hidden">

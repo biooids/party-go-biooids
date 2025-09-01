@@ -19,6 +19,10 @@ router.get("/profiles", userController.getUsersByUsernames);
 // Fetch a single public profile by username
 router.get("/profile/:username", userController.getUserByUsername);
 
+// Fetch followers and following lists for a user
+router.get("/:username/followers", userController.getFollowers);
+router.get("/:username/following", userController.getFollowing);
+
 // --- PROTECTED ROUTES ---
 const requireAuth = authenticate({ required: true });
 
@@ -41,5 +45,6 @@ router.patch(
   validate(changePasswordSchema),
   userController.changePassword
 );
-
+router.post("/:username/follow", requireAuth, userController.followUser);
+router.delete("/:username/follow", requireAuth, userController.unfollowUser);
 export default router;
